@@ -2,8 +2,9 @@ import React, { useState } from 'react'
 
 // ── Types ──────────────────────────────────────────────────
 interface Props {
-  initialDate: string   // YYYY-MM-DD or ''
-  initialTime: string   // HH:MM (24h)
+  initialDate:   string        // YYYY-MM-DD or ''
+  initialTime:   string        // HH:MM (24h)
+  reservedDates: string[]      // YYYY-MM-DD dates blocked as reserved
   onConfirm: (date: string, time: string) => void
   onCancel: () => void
 }
@@ -52,6 +53,7 @@ const to24h = (display: string): string => {
 export default function DateTimePicker({
   initialDate,
   initialTime,
+  reservedDates,
   onConfirm,
   onCancel,
 }: Props): React.ReactElement {
@@ -84,6 +86,12 @@ export default function DateTimePicker({
     const d = new Date(viewYear, viewMonth, day)
     const t = new Date(); t.setHours(0, 0, 0, 0)
     return d < t
+  }
+
+  const isReserved = (day: number): boolean => {
+    const month = String(viewMonth + 1).padStart(2, '0')
+    const d     = String(day).padStart(2, '0')
+    return reservedDates.includes(`${viewYear}-${month}-${d}`)
   }
 
   // ── Month navigation ──
@@ -137,12 +145,13 @@ export default function DateTimePicker({
               key={i}
               className={[
                 'dtp-day',
-                day === null           ? 'dtp-day--empty'    : '',
-                day && selectedDay === day ? 'dtp-day--selected' : '',
-                day && isToday(day)   ? 'dtp-day--today'    : '',
-                day && isPast(day)    ? 'dtp-day--past'     : '',
+                day === null                ? 'dtp-day--empty'    : '',
+                day && selectedDay === day  ? 'dtp-day--selected' : '',
+                day && isToday(day)         ? 'dtp-day--today'    : '',
+                day && isPast(day)          ? 'dtp-day--past'     : '',
+                day && isReserved(day)      ? 'dtp-day--reserved' : '',
               ].join(' ').trim()}
-              disabled={!day || isPast(day)}
+              disabled={!day || isPast(day) || isReserved(day)}
               onClick={() => day && setSelectedDay(day)}
             >
               {day ?? ''}

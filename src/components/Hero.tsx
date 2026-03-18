@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { WhatsApp, Instagram } from './icons'
 import DateTimePicker from './DateTimePicker'
+import { submitBooking, fetchReservedDates } from '../lib/airtable'
 
 // ── Types ──────────────────────────────────────────────────
 interface SocialLink {
@@ -55,8 +56,9 @@ const formatDateTimeDisplay = (date: string, time: string): string => {
 
 // ── Component ──────────────────────────────────────────────
 export default function Hero(): React.ReactElement {
-  const [currentSlide, setCurrentSlide] = useState<number>(0)
-  const [showPicker,   setShowPicker]   = useState<boolean>(false)
+  const [currentSlide,   setCurrentSlide]   = useState<number>(0)
+  const [showPicker,     setShowPicker]     = useState<boolean>(false)
+  const [reservedDates,  setReservedDates]  = useState<string[]>([])
   const [form, setForm] = useState<BookingForm>({
     fullName: '', phone: '',
     time: '09:00', date: '',
@@ -90,6 +92,12 @@ export default function Hero(): React.ReactElement {
     setShowPicker(false)
   }
 
+  const openPicker = async (): Promise<void> => {
+    const dates = await fetchReservedDates()
+    setReservedDates(dates)
+    setShowPicker(true)
+  }
+
   const handleGetQuote = (): void => {
     const dateDisplay = form.date
       ? formatDateTimeDisplay(form.date, form.time)
@@ -115,8 +123,15 @@ export default function Hero(): React.ReactElement {
       `📅 *Date & Time:* ${dateDisplay}`,
     ].join('\n')
 
-    const url = `https://wa.me/19723755225?text=${encodeURIComponent(message)}`
-    window.open(url, '_blank')
+    window.open(`https://wa.me/19723755225?text=${encodeURIComponent(message)}`, '_blank')
+
+    submitBooking({
+      name:    form.fullName,
+      phone:   form.phone,
+      service: serviceDetails || form.serviceType,
+      date:    form.date,
+      time:    form.time,
+    }).catch(() => {/* silent – WhatsApp message already sent */})
   }
 
   return (
@@ -221,7 +236,7 @@ export default function Hero(): React.ReactElement {
             <button
               type="button"
               className={`dtp-trigger${form.date ? ' dtp-trigger--filled' : ''}`}
-              onClick={() => setShowPicker(true)}
+              onClick={() => void openPicker()}
             >
               {formatDateTimeDisplay(form.date, form.time)}
             </button>
@@ -249,6 +264,7 @@ export default function Hero(): React.ReactElement {
         <DateTimePicker
           initialDate={form.date}
           initialTime={form.time}
+          reservedDates={reservedDates}
           onConfirm={handleDateTimeConfirm}
           onCancel={() => setShowPicker(false)}
         />

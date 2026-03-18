@@ -1247,6 +1247,14 @@
   cursor: default;
 }
 
+.dtp-day--reserved {
+  background: #f3e6e6 !important;
+  color: #c0392b !important;
+  text-decoration: line-through;
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
 /* ── Timezone label ── */
 .dtp-timezone {
   font-size: 12px;

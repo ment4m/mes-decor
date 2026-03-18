@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import { WhatsApp, Instagram } from './icons'
 import DateTimePicker from './DateTimePicker'
+import { submitBooking, fetchReservedDates } from '../lib/airtable'
 
 type ServiceType  = '' | 'Rental' | 'Event Decor'
 type DeliveryType = '' | 'Drop-off' | 'Pick-up'
@@ -36,7 +37,8 @@ const formatDateTimeDisplay = (date: string, time: string): string => {
 }
 
 export default function QuoteSection(): React.ReactElement {
-  const [showPicker, setShowPicker] = useState<boolean>(false)
+  const [showPicker,    setShowPicker]    = useState<boolean>(false)
+  const [reservedDates, setReservedDates] = useState<string[]>([])
   const [form, setForm] = useState<BookingForm>({
     fullName: '', phone: '', time: '09:00', date: '',
     serviceType: '', deliveryType: '', zipCode: '', eventCategory: '',
@@ -60,6 +62,12 @@ export default function QuoteSection(): React.ReactElement {
     setShowPicker(false)
   }
 
+  const openPicker = async (): Promise<void> => {
+    const dates = await fetchReservedDates()
+    setReservedDates(dates)
+    setShowPicker(true)
+  }
+
   const handleGetQuote = (): void => {
     const dateDisplay = form.date ? formatDateTimeDisplay(form.date, form.time) : 'Not selected'
     let serviceDetails = form.serviceType
@@ -76,6 +84,14 @@ export default function QuoteSection(): React.ReactElement {
       `📅 *Date & Time:* ${dateDisplay}`,
     ].join('\n')
     window.open(`https://wa.me/19723755225?text=${encodeURIComponent(message)}`, '_blank')
+
+    submitBooking({
+      name:    form.fullName,
+      phone:   form.phone,
+      service: serviceDetails || form.serviceType,
+      date:    form.date,
+      time:    form.time,
+    }).catch(() => {/* silent */})
   }
 
   return (
@@ -146,7 +162,7 @@ export default function QuoteSection(): React.ReactElement {
             <button
               type="button"
               className={`dtp-trigger${form.date ? ' dtp-trigger--filled' : ''}`}
-              onClick={() => setShowPicker(true)}
+              onClick={() => void openPicker()}
             >
               {formatDateTimeDisplay(form.date, form.time)}
             </button>
@@ -160,6 +176,7 @@ export default function QuoteSection(): React.ReactElement {
         <DateTimePicker
           initialDate={form.date}
           initialTime={form.time}
+          reservedDates={reservedDates}
           onConfirm={handleDateTimeConfirm}
           onCancel={() => setShowPicker(false)}
         />
