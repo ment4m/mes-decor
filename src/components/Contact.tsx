@@ -14,13 +14,10 @@ const SOCIAL_ICONS: SocialIcon[] = [
 
 export default function Contact(): React.ReactElement {
   return (
-    <footer className="bg-peach px-10 py-5" id="contact">
-
+    <footer className="bg-peach px-10 mob:px-4 py-5" id="contact">
       <hr className="border-none border-t border-black/10 mb-6" />
+      <div className="flex items-center justify-between flex-wrap mob:flex-col mob:items-center mob:text-center gap-4 mob:gap-3">
 
-      <div className="flex items-center justify-between flex-wrap gap-4">
-
-        {/* Logo pill */}
         <div className="flex items-center gap-2 bg-gold text-off-white px-5 py-2.5 rounded-pill">
           <img src="/logo.png" alt="Mes Decor logo" className="w-8 h-8 object-contain rounded-full border-2 border-off-white bg-off-white" />
           <span className="flex flex-col items-center leading-none">
@@ -31,7 +28,6 @@ export default function Contact(): React.ReactElement {
 
         <p className="text-[13px] text-text-muted">©2026 Mes Decor. All Rights Reserved.</p>
 
-        {/* Social icons */}
         <div className="flex gap-2">
           {SOCIAL_ICONS.map(({ Icon, label, href }) => (
             <a

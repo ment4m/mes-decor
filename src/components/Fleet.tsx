@@ -127,20 +127,20 @@ export default function Fleet(): React.ReactElement {
 
   return (
     <>
-      <section className="px-12 pt-[72px] pb-14 text-center bg-cream" id="gallery">
-        <h2 className="text-[34px] font-bold tracking-tight mb-3 text-text-dark">Discover Our Prestigious Decorations</h2>
+      <section className="px-12 tab:px-6 mob:px-4 pt-[72px] tab:pt-14 mob:pt-10 pb-14 mob:pb-8 text-center bg-cream" id="gallery">
+        <h2 className="text-[34px] mob:text-2xl font-bold tracking-tight mb-3 text-text-dark">Discover Our Prestigious Decorations</h2>
         <p className="text-[14px] text-text-muted leading-relaxed mb-9">
           Explore our handpicked collection of luxury event decorations<br />
           each designed to make your event truly unforgettable.
         </p>
 
         {/* Filters */}
-        <div className="flex justify-center gap-2 flex-wrap mb-11">
+        <div className="flex justify-center gap-2 flex-wrap mb-11 mob:gap-1.5">
           {FILTERS.map((f) => (
             <button
               key={f}
               onClick={() => handleFilter(f)}
-              className={`px-[22px] py-2 rounded-pill border text-[13px] font-medium cursor-pointer transition-all ${
+              className={`px-[22px] mob:px-4 py-2 mob:py-1.5 mob:text-[12px] rounded-pill border text-[13px] font-medium cursor-pointer transition-all ${
                 activeFilter === f
                   ? 'bg-dark text-off-white border-dark'
                   : 'bg-off-white text-text-muted border-border-col hover:border-gold hover:text-gold'
@@ -152,7 +152,7 @@ export default function Fleet(): React.ReactElement {
         </div>
 
         {/* Grid */}
-        <div className="grid grid-cols-3 gap-[22px] max-w-[1040px] mx-auto mb-10">
+        <div className="grid grid-cols-3 tab:grid-cols-2 mob:grid-cols-1 gap-[22px] tab:gap-4 mob:gap-3 max-w-[1040px] mx-auto mb-10">
           {visibleItems.map((item) => (
             <FleetCard key={item.id} item={item} onOpen={() => setLightboxItem(item)} />
           ))}

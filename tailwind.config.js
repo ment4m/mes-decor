@@ -3,6 +3,10 @@ export default {
   content: ['./index.html', './src/**/*.{ts,tsx}'],
   theme: {
     extend: {
+      screens: {
+        'tab': {'max': '900px'},
+        'mob': {'max': '600px'},
+      },
       colors: {
         gold:          '#A08650',
         'gold-light':  '#C4A87C',
