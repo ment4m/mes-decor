@@ -1,71 +1,157 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import { ArrowRight } from './icons'
 import { EVENT_CATEGORIES } from './Hero'
 
 // ── Types ──────────────────────────────────────────────────
 interface FleetItem {
-  id: number
-  seed: string
+  id:       number
   category: string
-  name: string
+  name:     string
+  images:   string[]   // one image = static, multiple = auto-slideshow
 }
 
 // ── Data ───────────────────────────────────────────────────
-const FILTERS: string[] = ['All', ...EVENT_CATEGORIES]
-
+// Replace placeholder URLs below with your real image paths e.g. '/wedding/royal-ballroom-1.jpg'
 const FLEET_ITEMS: FleetItem[] = [
-  // Wedding
-  { id:  1, seed: 'wedding1',    category: 'Wedding',     name: 'Royal Ballroom Setup'         },
-  { id:  2, seed: 'wedding2',    category: 'Wedding',     name: 'Garden Arch Ceremony'          },
-  { id:  3, seed: 'wedding3',    category: 'Wedding',     name: 'Luxury Floral Aisle'           },
-  { id:  4, seed: 'wedding4',    category: 'Wedding',     name: 'Candlelit Reception'           },
-  // Baby Shower
-  { id:  5, seed: 'babyshower1', category: 'Baby Shower', name: 'Sweet Baby Shower Garden'     },
-  { id:  6, seed: 'babyshower2', category: 'Baby Shower', name: 'Pastel Balloon Wonderland'    },
-  { id:  7, seed: 'babyshower3', category: 'Baby Shower', name: 'Floral Cloud Setup'           },
-  { id:  8, seed: 'babyshower4', category: 'Baby Shower', name: 'Dreamy Star Canopy'           },
   // Birthday
-  { id:  9, seed: 'birthday1',   category: 'Birthday',    name: 'Grand Birthday Gala'          },
-  { id: 10, seed: 'birthday2',   category: 'Birthday',    name: 'Glam Balloon Arch'            },
-  { id: 11, seed: 'birthday3',   category: 'Birthday',    name: 'Elegant Gold Table Setup'     },
-  { id: 12, seed: 'birthday4',   category: 'Birthday',    name: 'Garden Birthday Party'        },
-  // Graduation
-  { id: 13, seed: 'grad1',       category: 'Graduation',  name: 'Graduation Celebration'       },
-  { id: 14, seed: 'grad2',       category: 'Graduation',  name: 'Academic Achievement Setup'   },
-  { id: 15, seed: 'grad3',       category: 'Graduation',  name: 'Confetti & Gold Decor'        },
-  { id: 16, seed: 'grad4',       category: 'Graduation',  name: 'Milestone Balloon Wall'       },
+  { id:  1, category: 'Birthday',    name: 'Birthday Event 1',           images: ['/birthday/birthday-event1-1.jpg', '/birthday/birthday-event1-2.jpg'] },
+  { id:  2, category: 'Birthday',    name: 'Birthday Event 2',           images: ['/birthday/birthday-event2-1.jpg', '/birthday/birthday-event2-2.jpg'] },
+  { id:  3, category: 'Birthday',    name: 'Birthday Event 3',           images: ['/birthday/birthday-event3-1.jpg', '/birthday/birthday-event3-2.jpg', '/birthday/birthday-event3-3.jpg'] },
+  { id:  4, category: 'Birthday',    name: 'Birthday Event 4',           images: ['/birthday/birthday-event4-1.jpg', '/birthday/birthday-event4-2.jpg'] },
+  { id:  5, category: 'Birthday',    name: 'Birthday Event 5',           images: ['/birthday/birthday-event5-1.jpg'] },
+  { id:  6, category: 'Birthday',    name: 'Birthday Event 6',           images: ['/birthday/birthday-event6-1.jpg'] },
+  // Baby Shower
+  { id:  7, category: 'Baby Shower', name: 'Baby Shower Setup',          images: ['/baby-shower/babyShower-event1-1.jpg'] },
   // Christening
-  { id: 17, seed: 'christening1',category: 'Christening', name: 'Elegant Christening Setup'   },
-  { id: 18, seed: 'christening2',category: 'Christening', name: 'White & Gold Blessing Arch'  },
-  { id: 19, seed: 'christening3',category: 'Christening', name: 'Floral Font Arrangement'     },
-  { id: 20, seed: 'christening4',category: 'Christening', name: 'Soft Bloom Table Decor'      },
+  { id:  8, category: 'Christening', name: 'Christening Event 1',        images: ['/christening/christening-event1-1.jpg', '/christening/christening-event1-2.jpg'] },
+  // Graduation
+  { id:  9, category: 'Graduation',  name: 'Graduation Event 1',         images: ['/graduation/graduation-event1-1.jpg', '/graduation/graduation-event1-2.jpg'] },
+  { id: 10, category: 'Graduation',  name: 'Graduation Event 2',         images: ['/graduation/graduation-event2-1.jpg'] },
+  { id: 11, category: 'Graduation',  name: 'Graduation Event 3',         images: ['/graduation/graduation-event3-1.jpg', '/graduation/graduation-event3-2.jpg', '/graduation/graduation-event3-3.jpg'] },
+  // Wedding
+  { id: 12, category: 'Wedding',     name: 'Wedding Event 1',            images: ['/wedding/wedding-event1-1.jpg'] },
   // Others
-  { id: 21, seed: 'others1',     category: 'Others',      name: 'Custom Event Arrangement'     },
-  { id: 22, seed: 'others2',     category: 'Others',      name: 'Romantic Dinner Setup'        },
-  { id: 23, seed: 'others3',     category: 'Others',      name: 'Corporate Gala Night'         },
-  { id: 24, seed: 'others4',     category: 'Others',      name: 'Luxury Lounge Decor'          },
+  { id: 13, category: 'Others',      name: 'Special Event 1',            images: ['/others/others-event1-1.jpg', '/others/others-event1-2.jpg'] },
+  { id: 14, category: 'Others',      name: 'Special Event 2',            images: ['/others/others-event2-1.jpg'] },
 ]
 
+const FILTERS: string[] = ['All', ...EVENT_CATEGORIES]
 const PAGE_SIZE = 6
 
-// ── Component ──────────────────────────────────────────────
-export default function Fleet(): React.ReactElement {
-  const [activeFilter, setActiveFilter] = useState<string>('All')
-  const [visibleCount, setVisibleCount] = useState<number>(PAGE_SIZE)
+// ── Lightbox Modal ──────────────────────────────────────────
+function Lightbox({ item, onClose }: { item: FleetItem; onClose: () => void }): React.ReactElement {
+  const [slide, setSlide] = useState<number>(0)
 
-  const filtered: FleetItem[] = activeFilter === 'All'
+  const prev = useCallback(() => setSlide((s) => (s - 1 + item.images.length) % item.images.length), [item.images.length])
+  const next = useCallback(() => setSlide((s) => (s + 1) % item.images.length), [item.images.length])
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent): void => {
+      if (e.key === 'ArrowLeft')  prev()
+      if (e.key === 'ArrowRight') next()
+      if (e.key === 'Escape')     onClose()
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [prev, next, onClose])
+
+  return (
+    <div className="lightbox-overlay" onClick={onClose}>
+      <div className="lightbox-modal" onClick={(e) => e.stopPropagation()}>
+
+        {/* Close */}
+        <button className="lightbox-close" onClick={onClose}>✕</button>
+
+        {/* Image */}
+        <div className="lightbox-img-wrap">
+          <img src={item.images[slide]} alt={item.name} className="lightbox-img" />
+        </div>
+
+        {/* Arrows */}
+        {item.images.length > 1 && (
+          <>
+            <button className="lightbox-arrow lightbox-arrow--left"  onClick={prev}>‹</button>
+            <button className="lightbox-arrow lightbox-arrow--right" onClick={next}>›</button>
+          </>
+        )}
+
+        {/* Info + dots */}
+        <div className="lightbox-footer">
+          <span className="lightbox-name">{item.name}</span>
+          {item.images.length > 1 && (
+            <div className="lightbox-dots">
+              {item.images.map((_, i) => (
+                <button key={i} className={`lightbox-dot${i === slide ? ' active' : ''}`} onClick={() => setSlide(i)} />
+              ))}
+            </div>
+          )}
+          <span className="lightbox-count">{slide + 1} / {item.images.length}</span>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ── Card with optional auto-slideshow ──────────────────────
+function FleetCard({ item, onOpen }: { item: FleetItem; onOpen: () => void }): React.ReactElement {
+  const [slide, setSlide] = useState<number>(0)
+  const hasMultiple = item.images.length > 1
+
+  useEffect(() => {
+    if (!hasMultiple) return
+    const timer = setInterval(() => {
+      setSlide((prev) => (prev + 1) % item.images.length)
+    }, 3000)
+    return () => clearInterval(timer)
+  }, [hasMultiple, item.images.length])
+
+  return (
+    <div className="fleet-card" onClick={onOpen} style={{ cursor: 'pointer' }}>
+      <div className="fleet-card-img">
+        {item.images.map((src, i) => (
+          <img
+            key={src}
+            src={src}
+            alt={item.name}
+            className={`fleet-card-slide${i === slide ? ' fleet-card-slide--active' : ''}`}
+          />
+        ))}
+        {hasMultiple && (
+          <div className="fleet-card-dots">
+            {item.images.map((_, i) => (
+              <span key={i} className={`fleet-card-dot${i === slide ? ' active' : ''}`} />
+            ))}
+          </div>
+        )}
+      </div>
+      <div className="fleet-card-body">
+        <span className="fleet-card-tag">{item.category}</span>
+        <h4>{item.name}</h4>
+      </div>
+    </div>
+  )
+}
+
+// ── Main Component ──────────────────────────────────────────
+export default function Fleet(): React.ReactElement {
+  const [activeFilter, setActiveFilter]   = useState<string>('All')
+  const [visibleCount, setVisibleCount]   = useState<number>(PAGE_SIZE)
+  const [lightboxItem, setLightboxItem]   = useState<FleetItem | null>(null)
+
+  const filtered = activeFilter === 'All'
     ? FLEET_ITEMS
     : FLEET_ITEMS.filter((item) => item.category === activeFilter)
 
-  const visibleItems  = filtered.slice(0, visibleCount)
-  const hasMore       = visibleCount < filtered.length
+  const visibleItems = filtered.slice(0, visibleCount)
+  const hasMore      = visibleCount < filtered.length
 
   const handleFilter = (f: string): void => {
     setActiveFilter(f)
-    setVisibleCount(PAGE_SIZE)   // reset to first page on filter change
+    setVisibleCount(PAGE_SIZE)
   }
 
   return (
+    <>
     <section className="fleet-section" id="gallery">
       <h2 className="fleet-title">Discover Our Prestigious Decorations</h2>
       <p className="fleet-subtitle">
@@ -87,15 +173,7 @@ export default function Fleet(): React.ReactElement {
 
       <div className="fleet-grid">
         {visibleItems.map((item) => (
-          <div key={item.id} className="fleet-card">
-            <div className="fleet-card-img">
-              <img src={`https://picsum.photos/seed/${item.seed}/600/400`} alt={item.name} />
-            </div>
-            <div className="fleet-card-body">
-              <span className="fleet-card-tag">{item.category}</span>
-              <h4>{item.name}</h4>
-            </div>
-          </div>
+          <FleetCard key={item.id} item={item} onOpen={() => setLightboxItem(item)} />
         ))}
       </div>
 
@@ -113,5 +191,10 @@ export default function Fleet(): React.ReactElement {
         )}
       </div>
     </section>
+
+    {lightboxItem && (
+      <Lightbox item={lightboxItem} onClose={() => setLightboxItem(null)} />
+    )}
+    </>
   )
 }

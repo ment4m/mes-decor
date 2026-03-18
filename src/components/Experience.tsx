@@ -10,18 +10,18 @@ interface ExperienceItem {
 
 // ── Data ───────────────────────────────────────────────────
 const ITEMS: ExperienceItem[] = [
-  { id:  1, seed: 'exp1',  name: 'Royal Floral Arch'         },
-  { id:  2, seed: 'exp2',  name: 'Luxury Tablescape'         },
-  { id:  3, seed: 'exp3',  name: 'Garden Romance Setup'      },
-  { id:  4, seed: 'exp4',  name: 'Grand Entrance Display'    },
-  { id:  5, seed: 'exp5',  name: 'Candlelit Ceremony Aisle'  },
-  { id:  6, seed: 'exp6',  name: 'Floral Ceiling Installation'},
-  { id:  7, seed: 'exp7',  name: 'Balloon Arch Backdrop'     },
-  { id:  8, seed: 'exp8',  name: 'Boho Chic Picnic Setup'    },
-  { id:  9, seed: 'exp9',  name: 'Gold & White Reception'    },
-  { id: 10, seed: 'exp10', name: 'Rustic Wooden Arbor'       },
-  { id: 11, seed: 'exp11', name: 'Dreamy Drape Canopy'       },
-  { id: 12, seed: 'exp12', name: 'Luxury Lounge Corner'      },
+  { id:  1, seed: 'rent1',  name: 'Gold Chiavari Chairs'      },
+  { id:  2, seed: 'rent2',  name: 'Floral Backdrop Stand'     },
+  { id:  3, seed: 'rent3',  name: 'Luxury Arch Frame'         },
+  { id:  4, seed: 'rent4',  name: 'Round Banquet Tables'      },
+  { id:  5, seed: 'rent5',  name: 'Champagne Wall'            },
+  { id:  6, seed: 'rent6',  name: 'LED Marquee Letters'       },
+  { id:  7, seed: 'rent7',  name: 'Balloon Garland Kit'       },
+  { id:  8, seed: 'rent8',  name: 'Sweetheart Table Set'      },
+  { id:  9, seed: 'rent9',  name: 'Candle Pillar Collection'  },
+  { id: 10, seed: 'rent10', name: 'Photo Booth Frame'         },
+  { id: 11, seed: 'rent11', name: 'Drape Canopy Set'          },
+  { id: 12, seed: 'rent12', name: 'Lounge Furniture Set'      },
 ]
 
 const PAGE_SIZE = 4
@@ -35,10 +35,10 @@ export default function Experience(): React.ReactElement {
 
   return (
     <section className="experience-section">
-      <h2 className="experience-title">Experience the Elegance</h2>
+      <h2 className="experience-title">Rentals</h2>
       <p className="experience-subtitle">
-        Discover the unmatched beauty and prestige of our decorations —<br />
-        crafted to make your special day truly extraordinary.
+        Browse our curated collection of premium rental pieces<br />
+        everything you need to bring your vision to life.
       </p>
 
       <div className="experience-grid">
@@ -67,7 +67,7 @@ export default function Experience(): React.ReactElement {
             className="arrow-pill-btn arrow-pill-btn--outline-light"
             onClick={() => setVisibleCount((c) => c + PAGE_SIZE)}
           >
-            More Decorations
+            More Rentals
             <span className="arrow-circle arrow-circle--light"><ArrowRight /></span>
           </button>
         ) : (

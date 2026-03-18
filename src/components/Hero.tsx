@@ -25,11 +25,11 @@ interface BookingForm {
 
 // ── Data ───────────────────────────────────────────────────
 const HERO_IMAGES: string[] = [
-  'https://picsum.photos/seed/decor-hero1/1600/900',
-  'https://picsum.photos/seed/decor-hero2/1600/900',
-  'https://picsum.photos/seed/decor-hero3/1600/900',
-  'https://picsum.photos/seed/decor-hero4/1600/900',
-  'https://picsum.photos/seed/decor-hero5/1600/900',
+  '/hero/hero1.jpg',
+  '/hero/hero2.jpg',
+  '/hero/hero3.jpg',
+  '/hero/hero4.jpg',
+  '/hero/hero5.jpg',
 ]
 
 const SOCIAL_LINKS: SocialLink[] = [
@@ -38,7 +38,7 @@ const SOCIAL_LINKS: SocialLink[] = [
 ]
 
 export const EVENT_CATEGORIES: string[] = [
-  'Wedding', 'Baby Shower', 'Birthday', 'Graduation', 'Christening', 'Others',
+  'Birthday', 'Baby Shower', 'Christening', 'Graduation', 'Wedding', 'Others',
 ]
 
 // ── Helpers ────────────────────────────────────────────────
