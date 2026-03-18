@@ -28,8 +28,6 @@ const FLEET_ITEMS: FleetItem[] = [
   { id:  9, category: 'Graduation',  name: 'Graduation Event 1',         images: ['/graduation/graduation-event1-1.jpg', '/graduation/graduation-event1-2.jpg'] },
   { id: 10, category: 'Graduation',  name: 'Graduation Event 2',         images: ['/graduation/graduation-event2-1.jpg'] },
   { id: 11, category: 'Graduation',  name: 'Graduation Event 3',         images: ['/graduation/graduation-event3-1.jpg', '/graduation/graduation-event3-2.jpg', '/graduation/graduation-event3-3.jpg'] },
-  // Wedding
-  { id: 12, category: 'Wedding',     name: 'Wedding Event 1',            images: ['/wedding/wedding-event1-1.jpg'] },
   // Others
   { id: 13, category: 'Others',      name: 'Special Event 1',            images: ['/others/others-event1-1.jpg', '/others/others-event1-2.jpg'] },
   { id: 14, category: 'Others',      name: 'Special Event 2',            images: ['/others/others-event2-1.jpg'] },
@@ -126,7 +124,6 @@ function FleetCard({ item, onOpen }: { item: FleetItem; onOpen: () => void }): R
       </div>
       <div className="fleet-card-body">
         <span className="fleet-card-tag">{item.category}</span>
-        <h4>{item.name}</h4>
       </div>
     </div>
   )
@@ -155,7 +152,7 @@ export default function Fleet(): React.ReactElement {
     <section className="fleet-section" id="gallery">
       <h2 className="fleet-title">Discover Our Prestigious Decorations</h2>
       <p className="fleet-subtitle">
-        Explore our handpicked collection of luxury event decorations —<br />
+        Explore our handpicked collection of luxury event decorations<br />
         each designed to make your event truly unforgettable.
       </p>
 

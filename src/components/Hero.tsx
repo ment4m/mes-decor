@@ -38,7 +38,7 @@ const SOCIAL_LINKS: SocialLink[] = [
 ]
 
 export const EVENT_CATEGORIES: string[] = [
-  'Birthday', 'Baby Shower', 'Christening', 'Graduation', 'Wedding', 'Others',
+  'Birthday', 'Baby Shower', 'Christening', 'Graduation', 'Others',
 ]
 
 // ── Helpers ────────────────────────────────────────────────
