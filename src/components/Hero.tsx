@@ -14,7 +14,7 @@ type DeliveryType   = '' | 'Drop-off' | 'Pick-up'
 interface BookingForm {
   fullName:     string
   phone:        string
-time:         string   // HH:MM 24h
+  time:         string   // HH:MM 24h
   date:         string   // YYYY-MM-DD
   serviceType:  ServiceType
   deliveryType: DeliveryType
@@ -89,6 +89,35 @@ export default function Hero(): React.ReactElement {
   const handleDateTimeConfirm = (date: string, time: string): void => {
     setForm({ ...form, date, time })
     setShowPicker(false)
+  }
+
+  const handleGetQuote = (): void => {
+    const dateDisplay = form.date
+      ? formatDateTimeDisplay(form.date, form.time)
+      : 'Not selected'
+
+    let serviceDetails = form.serviceType
+    if (form.serviceType === 'Rental' && form.deliveryType) {
+      serviceDetails += ` – ${form.deliveryType}`
+      if (form.deliveryType === 'Drop-off' && form.zipCode) {
+        serviceDetails += ` (Zip: ${form.zipCode})`
+      }
+    }
+    if (form.serviceType === 'Event Decor' && form.eventCategory) {
+      serviceDetails += ` – ${form.eventCategory}`
+    }
+
+    const message = [
+      '🌸 *New Quote Request – Mes Decor*',
+      '',
+      `👤 *Name:* ${form.fullName || 'N/A'}`,
+      `📞 *Phone:* ${form.phone || 'N/A'}`,
+      `🎀 *Service:* ${serviceDetails || 'N/A'}`,
+      `📅 *Date & Time:* ${dateDisplay}`,
+    ].join('\n')
+
+    const url = `https://wa.me/19723755225?text=${encodeURIComponent(message)}`
+    window.open(url, '_blank')
   }
 
   return (
@@ -199,7 +228,7 @@ export default function Hero(): React.ReactElement {
             </button>
           </div>
 
-          <button className="btn-book">Get a Quote</button>
+          <button className="btn-book" onClick={handleGetQuote}>Get a Quote</button>
         </div>
 
         {/* ── Slide Dot Indicators ── */}
