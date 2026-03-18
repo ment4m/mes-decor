@@ -5,8 +5,9 @@ import Navbar     from './components/Navbar'
 import Hero       from './components/Hero'
 import Fleet      from './components/Fleet'
 import Experience from './components/Experience'
-import About      from './components/About'
-import Contact    from './components/Contact'
+import About        from './components/About'
+import QuoteSection from './components/QuoteSection'
+import Contact      from './components/Contact'
 
 export default function App() {
   return (
@@ -16,6 +17,7 @@ export default function App() {
       <Fleet />
       <Experience />
       <About />
+      <QuoteSection />
       <Contact />
     </div>
   )

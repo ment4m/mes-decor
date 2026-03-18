@@ -1482,3 +1482,50 @@
   .dtp-times { grid-template-columns: repeat(3, 1fr); gap: 6px; }
   .dtp-time { font-size: 12px; padding: 8px 4px; }
 }
+
+/* ═══════════════════════════════════════
+   QUOTE SECTION (mobile only)
+═══════════════════════════════════════ */
+.quote-section {
+  display: none; /* hidden on desktop */
+}
+
+/* Navbar Get a Quote button — styled like a nav link */
+.navbar-quote-btn {
+  background: none;
+  border: none;
+  padding: 0;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--gold-dark);
+  cursor: pointer;
+  transition: color 0.2s;
+}
+.navbar-quote-btn:hover { color: var(--gold); }
+
+@media (max-width: 900px) {
+  /* Hide booking form inside hero on mobile */
+  .hero .booking-form { display: none; }
+
+  /* Show quote section on mobile */
+  .quote-section {
+    display: block;
+    background: var(--cream);
+    padding: 56px 24px;
+    text-align: center;
+  }
+  .quote-section-title {
+    font-size: 28px;
+    font-weight: 700;
+    color: var(--text-dark);
+    margin-bottom: 24px;
+  }
+  .booking-form--standalone {
+    max-width: 440px;
+    margin: 0 auto;
+    background: var(--dark);
+    border-radius: var(--radius-card);
+    padding: 24px 20px;
+    text-align: left;
+  }
+}
