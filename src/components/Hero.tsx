@@ -30,6 +30,7 @@ const HERO_IMAGES: string[] = [
   '/hero/hero3.jpg',
   '/hero/hero4.jpg',
   '/hero/hero5.jpg',
+  '/hero/hero6.jpg',
 ]
 
 const SOCIAL_LINKS: SocialLink[] = [
