@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react'
-import { WhatsApp, Instagram, YouTube, Facebook, Pinterest } from './icons'
+import { WhatsApp, Instagram } from './icons'
 import DateTimePicker from './DateTimePicker'
 
 // ── Types ──────────────────────────────────────────────────
 interface SocialLink {
   Icon: () => React.ReactElement
   label: string
+  href: string
 }
 
 type ServiceType    = '' | 'Rental' | 'Event Decor'
@@ -32,11 +33,8 @@ const HERO_IMAGES: string[] = [
 ]
 
 const SOCIAL_LINKS: SocialLink[] = [
-  { Icon: WhatsApp,  label: 'WhatsApp'  },
-  { Icon: Instagram, label: 'Instagram' },
-  { Icon: YouTube,   label: 'YouTube'   },
-  { Icon: Facebook,  label: 'Facebook'  },
-  { Icon: Pinterest, label: 'Pinterest' },
+  { Icon: WhatsApp,  label: 'WhatsApp',  href: 'https://wa.me/19723755225'           },
+  { Icon: Instagram, label: 'Instagram', href: 'https://instagram.com/decorbymessi'  },
 ]
 
 export const EVENT_CATEGORIES: string[] = [
@@ -151,8 +149,8 @@ export default function Hero(): React.ReactElement {
 
           {/* Social icons at top */}
           <div className="form-socials">
-            {SOCIAL_LINKS.map(({ Icon, label }) => (
-              <a key={label} href="#" aria-label={label} className="form-social-icon">
+            {SOCIAL_LINKS.map(({ Icon, label, href }) => (
+              <a key={label} href={href} aria-label={label} target="_blank" rel="noreferrer" className="form-social-icon">
                 <Icon />
               </a>
             ))}
