@@ -1,19 +1,36 @@
 import React, { useState, useEffect, useCallback } from 'react'
 
+type ItemKey = 'serpentine-table' | 'chiavari-chairs' | 'grad-marquee'
+type PaymentType = 'full' | 'deposit'
+
 interface ExperienceItem {
-  id:     number
-  name:   string
-  images: string[]
+  id:       number
+  key:      ItemKey
+  name:     string
+  images:   string[]
+  fullPrice: number   // in dollars
+  unit:     string    // e.g. 'item' | 'chair'
+  maxQty:   number
 }
 
 const ITEMS: ExperienceItem[] = [
-  { id: 1, name: 'Serpentine Table',     images: ['/rental/rental1.jpg'] },
-  { id: 2, name: 'Chiavari Chairs',      images: ['/rental/rental2.jpg'] },
-  { id: 3, name: 'Grad Marquee Letters', images: ['/rental/rental3.jpg'] },
+  { id: 1, key: 'serpentine-table', name: 'Serpentine Table',     images: ['/rental/rental1.jpg'], fullPrice: 300, unit: 'item',  maxQty: 1  },
+  { id: 2, key: 'chiavari-chairs',  name: 'Chiavari Chairs',      images: ['/rental/rental2.jpg'], fullPrice: 5,   unit: 'chair', maxQty: 40 },
+  { id: 3, key: 'grad-marquee',     name: 'Grad Marquee Letters', images: ['/rental/rental3.jpg'], fullPrice: 200, unit: 'item',  maxQty: 1  },
 ]
 
-const PAGE_SIZE = 4
+// ── Checkout helper ─────────────────────────────────────────
+async function startCheckout(item: ItemKey, paymentType: PaymentType, quantity: number): Promise<void> {
+  const res  = await fetch('/.netlify/functions/create-checkout', {
+    method:  'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body:    JSON.stringify({ item, paymentType, quantity }),
+  })
+  const data = await res.json()
+  if (data.url) window.location.href = data.url
+}
 
+// ── Lightbox ────────────────────────────────────────────────
 function Lightbox({ item, onClose }: { item: ExperienceItem; onClose: () => void }): React.ReactElement {
   const [slide, setSlide] = useState<number>(0)
   const prev = useCallback(() => setSlide((s) => (s - 1 + item.images.length) % item.images.length), [item.images.length])
@@ -58,61 +75,142 @@ function Lightbox({ item, onClose }: { item: ExperienceItem; onClose: () => void
   )
 }
 
-export default function Experience(): React.ReactElement {
-  const [visibleCount, setVisibleCount] = useState<number>(PAGE_SIZE)
-  const [lightboxItem, setLightboxItem] = useState<ExperienceItem | null>(null)
+// ── Payment Panel ────────────────────────────────────────────
+function PaymentPanel({ item, onClose }: { item: ExperienceItem; onClose: () => void }): React.ReactElement {
+  const [qty,     setQty]     = useState<number>(1)
+  const [loading, setLoading] = useState<PaymentType | null>(null)
 
-  const visibleItems = ITEMS.slice(0, visibleCount)
-  const hasMore      = visibleCount < ITEMS.length
+  const total   = item.fullPrice * qty
+  const deposit = Math.round(total * 0.5)
+
+  const pay = async (type: PaymentType): Promise<void> => {
+    setLoading(type)
+    await startCheckout(item.key, type, qty)
+    setLoading(null)
+  }
+
+  return (
+    <div className="fixed inset-0 bg-[rgba(20,12,4,0.85)] backdrop-blur-sm z-[400] flex items-center justify-center p-4" onClick={onClose}>
+      <div className="bg-off-white rounded-[20px] w-full max-w-[400px] overflow-hidden shadow-2xl" onClick={(e) => e.stopPropagation()}>
+        {/* Header */}
+        <div className="bg-dark px-6 py-5 flex items-center justify-between">
+          <h3 className="text-off-white font-bold text-[17px]">{item.name}</h3>
+          <button className="bg-white/10 border-none text-off-white w-8 h-8 rounded-full cursor-pointer flex items-center justify-center hover:bg-white/20 transition-colors" onClick={onClose}>✕</button>
+        </div>
+
+        <div className="px-6 py-6 flex flex-col gap-5">
+          {/* Quantity (chairs only) */}
+          {item.unit === 'chair' && (
+            <div>
+              <label className="text-[12px] font-bold text-text-muted uppercase tracking-wider block mb-2">Number of Chairs (max {item.maxQty})</label>
+              <div className="flex items-center gap-3">
+                <button
+                  className="w-9 h-9 rounded-full border border-border-col bg-white flex items-center justify-center text-lg font-bold text-text-dark cursor-pointer hover:border-gold hover:text-gold transition-colors"
+                  onClick={() => setQty((q) => Math.max(1, q - 1))}
+                >−</button>
+                <span className="text-[20px] font-bold text-text-dark w-8 text-center">{qty}</span>
+                <button
+                  className="w-9 h-9 rounded-full border border-border-col bg-white flex items-center justify-center text-lg font-bold text-text-dark cursor-pointer hover:border-gold hover:text-gold transition-colors"
+                  onClick={() => setQty((q) => Math.min(item.maxQty, q + 1))}
+                >+</button>
+              </div>
+            </div>
+          )}
+
+          {/* Price summary */}
+          <div className="bg-cream rounded-[12px] px-4 py-4 flex flex-col gap-1.5">
+            <div className="flex justify-between text-[14px]">
+              <span className="text-text-muted">
+                {item.unit === 'chair' ? `$${item.fullPrice} × ${qty} chair${qty > 1 ? 's' : ''}` : 'Rental price'}
+              </span>
+              <span className="font-semibold text-text-dark">${total}</span>
+            </div>
+            <div className="flex justify-between text-[13px] text-text-muted">
+              <span>50% deposit</span>
+              <span>${deposit}</span>
+            </div>
+          </div>
+
+          {/* Payment buttons */}
+          <div className="flex flex-col gap-3">
+            <button
+              className="w-full py-3 rounded-pill bg-gold text-off-white font-semibold text-[14px] border-none cursor-pointer hover:bg-gold-dark transition-colors flex items-center justify-center gap-2 disabled:opacity-60"
+              disabled={loading !== null}
+              onClick={() => void pay('full')}
+            >
+              {loading === 'full' ? 'Redirecting…' : `Pay in Full  $${total}`}
+            </button>
+            <button
+              className="w-full py-3 rounded-pill bg-white border border-gold text-gold font-semibold text-[14px] cursor-pointer hover:bg-gold hover:text-off-white transition-colors flex items-center justify-center gap-2 disabled:opacity-60"
+              disabled={loading !== null}
+              onClick={() => void pay('deposit')}
+            >
+              {loading === 'deposit' ? 'Redirecting…' : `Pay Deposit  $${deposit}`}
+            </button>
+          </div>
+
+          <p className="text-[11px] text-text-muted text-center">Secure payment powered by Stripe</p>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ── Main ─────────────────────────────────────────────────────
+export default function Experience(): React.ReactElement {
+  const [lightboxItem, setLightboxItem] = useState<ExperienceItem | null>(null)
+  const [payItem,      setPayItem]      = useState<ExperienceItem | null>(null)
 
   return (
     <>
-      <section className="bg-dark px-12 tab:px-6 mob:px-4 py-16 tab:py-12 mob:py-10 text-center">
+      <section className="bg-dark px-12 tab:px-6 mob:px-4 py-16 tab:py-12 mob:py-10 text-center" id="rentals">
         <h2 className="text-4xl mob:text-2xl font-bold text-off-white mb-3 tracking-tight">Rentals</h2>
         <p className="text-[14px] text-white/50 leading-relaxed mb-12 tab:mb-10 mob:mb-8">
           Browse our curated collection of premium rental pieces<br />
           everything you need to bring your vision to life.
         </p>
 
-        <div className="grid grid-cols-2 mob:grid-cols-1 gap-4 max-w-[1000px] mx-auto mb-10">
-          {visibleItems.map((item) => (
+        <div className="grid grid-cols-2 mob:grid-cols-1 gap-6 max-w-[1000px] mx-auto">
+          {ITEMS.map((item) => (
             <div
               key={item.id}
-              className="relative rounded-card overflow-hidden h-[360px] tab:h-[280px] mob:h-[220px] cursor-pointer"
+              className="relative rounded-card overflow-hidden cursor-pointer group"
               onClick={() => setLightboxItem(item)}
             >
-              <img src={item.images[0]} alt={item.name} className="w-full h-full object-cover block transition-transform duration-500 hover:scale-105" />
-              <div className="absolute bottom-0 left-0 right-0 p-5 flex items-end justify-between gap-3"
-                style={{ background: 'linear-gradient(to top, rgba(30,21,8,0.88) 0%, rgba(30,21,8,0) 100%)' }}>
-                <span className="text-[15px] mob:text-[13px] font-semibold text-off-white">{item.name}</span>
-                <button
-                  className="flex items-center gap-2 px-3 py-2 pl-[18px] mob:px-2 mob:py-1.5 mob:pl-3 mob:text-[12px] rounded-pill border border-white/60 bg-transparent text-off-white text-[13px] font-medium cursor-pointer hover:bg-white/10 transition-colors whitespace-nowrap"
-                  onClick={(e) => { e.stopPropagation(); window.scrollTo({ top: 0, behavior: 'smooth' }) }}
-                >
-                  Get a Quote
-                  <span className="w-8 h-8 rounded-full flex items-center justify-center bg-gold border-gold border">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
-                  </span>
-                </button>
+              <div className="h-[360px] tab:h-[280px] mob:h-[220px] overflow-hidden">
+                <img src={item.images[0]} alt={item.name} className="w-full h-full object-cover block transition-transform duration-500 group-hover:scale-105" />
+              </div>
+
+              {/* Overlay */}
+              <div
+                className="absolute bottom-0 left-0 right-0 p-5"
+                style={{ background: 'linear-gradient(to top, rgba(30,21,8,0.92) 0%, rgba(30,21,8,0) 100%)' }}
+              >
+                <div className="flex items-end justify-between gap-3">
+                  <div className="text-left">
+                    <p className="text-[15px] mob:text-[13px] font-semibold text-off-white">{item.name}</p>
+                    <p className="text-[13px] text-gold font-bold mt-0.5">
+                      {item.unit === 'chair' ? `$${item.fullPrice} / chair` : `$${item.fullPrice}`}
+                    </p>
+                  </div>
+                  <button
+                    className="flex items-center gap-2 px-3 py-2 pl-[18px] mob:px-2 mob:py-1.5 mob:pl-3 mob:text-[12px] rounded-pill bg-gold border-none text-off-white text-[13px] font-semibold cursor-pointer hover:bg-gold-dark transition-colors whitespace-nowrap"
+                    onClick={(e) => { e.stopPropagation(); setPayItem(item) }}
+                  >
+                    Book Now
+                    <span className="w-7 h-7 rounded-full flex items-center justify-center bg-white/20">
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                    </span>
+                  </button>
+                </div>
               </div>
             </div>
           ))}
         </div>
-
-        <div className="flex justify-center">
-          <button
-            className="inline-flex items-center gap-2.5 px-3 pl-[22px] py-2.5 rounded-pill border border-white/30 text-off-white text-[14px] font-medium cursor-pointer hover:bg-white/10 transition-colors"
-            onClick={() => hasMore ? setVisibleCount((c) => c + PAGE_SIZE) : setVisibleCount(PAGE_SIZE)}
-          >
-            {hasMore ? 'More Rentals' : 'Show Less'}
-            <span className="w-8 h-8 rounded-full flex items-center justify-center border border-white/60 text-off-white">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
-            </span>
-          </button>
-        </div>
       </section>
 
       {lightboxItem && <Lightbox item={lightboxItem} onClose={() => setLightboxItem(null)} />}
+      {payItem      && <PaymentPanel item={payItem}  onClose={() => setPayItem(null)} />}
     </>
   )
 }

@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { WhatsApp, Instagram } from './icons'
 import DateTimePicker from './DateTimePicker'
 import { submitBooking, fetchReservedDates } from '../lib/airtable'
@@ -43,6 +43,16 @@ export default function QuoteSection(): React.ReactElement {
     fullName: '', phone: '', time: '09:00', date: '',
     serviceType: '', deliveryType: '', zipCode: '', eventCategory: '',
   })
+
+  // Pre-select event category when triggered from Fleet gallery
+  useEffect(() => {
+    const handler = (e: Event): void => {
+      const category = (e as CustomEvent<{ category: string }>).detail.category
+      setForm((prev) => ({ ...prev, serviceType: 'Event Decor', eventCategory: category }))
+    }
+    window.addEventListener('preset-category', handler)
+    return () => window.removeEventListener('preset-category', handler)
+  }, [])
 
   const handleChange =
     (field: keyof BookingForm) =>

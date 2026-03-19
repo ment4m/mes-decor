@@ -77,6 +77,15 @@ function Lightbox({ item, onClose }: { item: FleetItem; onClose: () => void }): 
   )
 }
 
+// ── Scroll to booking form with category pre-selected ──────
+function quoteForCategory(category: string): void {
+  const isMobile = window.innerWidth <= 600
+  const target   = isMobile ? document.getElementById('quote-section') : document.getElementById('booking-form')
+  target?.scrollIntoView({ behavior: 'smooth' })
+  // Dispatch a custom event so Hero/QuoteSection can pre-select the category
+  window.dispatchEvent(new CustomEvent('preset-category', { detail: { category } }))
+}
+
 // ── Card ───────────────────────────────────────────────────
 function FleetCard({ item, onOpen }: { item: FleetItem; onOpen: () => void }): React.ReactElement {
   const [slide, setSlide] = useState<number>(0)
@@ -106,8 +115,15 @@ function FleetCard({ item, onOpen }: { item: FleetItem; onOpen: () => void }): R
           </div>
         )}
       </div>
-      <div className="px-[18px] pt-3.5 pb-[18px]">
+      <div className="px-[18px] pt-3 pb-[14px] flex items-center justify-between gap-2">
         <span className="text-[11px] text-gold uppercase tracking-[1.2px] font-bold">{item.category}</span>
+        <button
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-pill bg-dark text-off-white text-[11px] font-semibold border-none cursor-pointer hover:bg-gold transition-colors whitespace-nowrap"
+          onClick={(e) => { e.stopPropagation(); quoteForCategory(item.category) }}
+        >
+          Get a Quote
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+        </button>
       </div>
     </div>
   )

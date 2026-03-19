@@ -73,6 +73,16 @@ export default function Hero(): React.ReactElement {
     return () => clearInterval(timer)
   }, [])
 
+  // Pre-select event category when triggered from Fleet gallery
+  useEffect(() => {
+    const handler = (e: Event): void => {
+      const category = (e as CustomEvent<{ category: string }>).detail.category
+      setForm((prev) => ({ ...prev, serviceType: 'Event Decor', eventCategory: category }))
+    }
+    window.addEventListener('preset-category', handler)
+    return () => window.removeEventListener('preset-category', handler)
+  }, [])
+
   const handleChange =
     (field: keyof BookingForm) =>
     (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>): void => {
