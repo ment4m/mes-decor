@@ -59,6 +59,7 @@ export default function Hero(): React.ReactElement {
   const [currentSlide,   setCurrentSlide]   = useState<number>(0)
   const [showPicker,     setShowPicker]     = useState<boolean>(false)
   const [reservedDates,  setReservedDates]  = useState<string[]>([])
+  const [errors,         setErrors]         = useState<Partial<Record<keyof BookingForm, string>>>({})
   const [form, setForm] = useState<BookingForm>({
     fullName: '', phone: '',
     time: '09:00', date: '',
@@ -108,7 +109,24 @@ export default function Hero(): React.ReactElement {
     setShowPicker(true)
   }
 
+  const validate = (): boolean => {
+    const e: Partial<Record<keyof BookingForm, string>> = {}
+    if (!form.fullName.trim())  e.fullName     = 'Full name is required'
+    if (!form.phone.trim())     e.phone        = 'Phone number is required'
+    if (!form.serviceType)      e.serviceType  = 'Please select a service type'
+    if (form.serviceType === 'Rental' && !form.deliveryType)
+                                e.deliveryType = 'Please select a delivery type'
+    if (form.serviceType === 'Rental' && form.deliveryType === 'Drop-off' && !form.zipCode.trim())
+                                e.zipCode      = 'Zip code is required for drop-off'
+    if (form.serviceType === 'Event Decor' && !form.eventCategory)
+                                e.eventCategory = 'Please select an event category'
+    if (!form.date)             e.date         = 'Please select a date & time'
+    setErrors(e)
+    return Object.keys(e).length === 0
+  }
+
   const handleGetQuote = (): void => {
+    if (!validate()) return
     const dateDisplay = form.date
       ? formatDateTimeDisplay(form.date, form.time)
       : 'Not selected'
@@ -187,11 +205,13 @@ export default function Hero(): React.ReactElement {
           <div className="form-group">
             <label>Full Name*</label>
             <input type="text" placeholder="Your Full Name" value={form.fullName} onChange={handleChange('fullName')} />
+            {errors.fullName && <span className="form-error">{errors.fullName}</span>}
           </div>
 
           <div className="form-group">
             <label>Phone Number*</label>
             <input type="tel" placeholder="+1 234 567 8900" value={form.phone} onChange={handleChange('phone')} />
+            {errors.phone && <span className="form-error">{errors.phone}</span>}
           </div>
 
           {/* ── Service Type ── */}
@@ -202,6 +222,7 @@ export default function Hero(): React.ReactElement {
               <option value="Rental">Rental</option>
               <option value="Event Decor">Event Decor</option>
             </select>
+            {errors.serviceType && <span className="form-error">{errors.serviceType}</span>}
           </div>
 
           {/* ── Rental sub-fields ── */}
@@ -213,6 +234,7 @@ export default function Hero(): React.ReactElement {
                 <option value="Drop-off">Drop-off</option>
                 <option value="Pick-up">Pick-up</option>
               </select>
+              {errors.deliveryType && <span className="form-error">{errors.deliveryType}</span>}
             </div>
           )}
 
@@ -226,6 +248,7 @@ export default function Hero(): React.ReactElement {
                 value={form.zipCode}
                 onChange={handleChange('zipCode')}
               />
+              {errors.zipCode && <span className="form-error">{errors.zipCode}</span>}
             </div>
           )}
 
@@ -237,6 +260,7 @@ export default function Hero(): React.ReactElement {
                 <option value="">Select event category</option>
                 {EVENT_CATEGORIES.map((c) => <option key={c}>{c}</option>)}
               </select>
+              {errors.eventCategory && <span className="form-error">{errors.eventCategory}</span>}
             </div>
           )}
 
@@ -250,6 +274,7 @@ export default function Hero(): React.ReactElement {
             >
               {formatDateTimeDisplay(form.date, form.time)}
             </button>
+            {errors.date && <span className="form-error">{errors.date}</span>}
           </div>
 
           <button className="btn-book" onClick={handleGetQuote}>Get a Quote</button>

@@ -3,9 +3,7 @@ import React from 'react'
 const NAV_LINKS: string[] = ['About', 'Gallery']
 
 const handleGetQuote = (): void => {
-  const isMobile = window.innerWidth <= 900
-  const id = isMobile ? 'quote-section' : 'booking-form'
-  document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' })
+  window.scrollTo({ top: 0, behavior: 'smooth' })
 }
 
 export default function Navbar(): React.ReactElement {

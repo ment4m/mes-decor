@@ -79,10 +79,7 @@ function Lightbox({ item, onClose }: { item: FleetItem; onClose: () => void }): 
 
 // ── Scroll to booking form with category pre-selected ──────
 function quoteForCategory(category: string): void {
-  const isMobile = window.innerWidth <= 600
-  const target   = isMobile ? document.getElementById('quote-section') : document.getElementById('booking-form')
-  target?.scrollIntoView({ behavior: 'smooth' })
-  // Dispatch a custom event so Hero/QuoteSection can pre-select the category
+  window.scrollTo({ top: 0, behavior: 'smooth' })
   window.dispatchEvent(new CustomEvent('preset-category', { detail: { category } }))
 }
 

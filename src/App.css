@@ -169,7 +169,7 @@
 .hero {
   position: relative;
   width: 100%;
-  min-height: 100vh;          /* full screen on open */
+  min-height: 100vh;
   overflow: hidden;
   display: flex;
   align-items: center;
@@ -405,6 +405,12 @@
 }
 .btn-book:hover { background: var(--gold-dark); }
 .btn-book:active { transform: scale(0.98); }
+.form-error {
+  display: block;
+  font-size: 11px;
+  color: #ff6b6b;
+  margin-top: 4px;
+}
 
 /* ═══════════════════════════════════════
    FLEET (Filter Grid)
