@@ -8,14 +8,15 @@ interface ExperienceItem {
   key:      ItemKey
   name:     string
   images:   string[]
-  fullPrice: number   // in dollars
-  unit:     string    // e.g. 'item' | 'chair'
+  fullPrice: number
+  unit:     string
   maxQty:   number
+  minQty?:  number
 }
 
 const ITEMS: ExperienceItem[] = [
   { id: 1, key: 'serpentine-table', name: 'Serpentine Table',     images: ['/rental/rental1.jpg'], fullPrice: 300, unit: 'item',  maxQty: 1  },
-  { id: 2, key: 'chiavari-chairs',  name: 'Chiavari Chairs',      images: ['/rental/rental2.jpg'], fullPrice: 5,   unit: 'chair', maxQty: 40 },
+  { id: 2, key: 'chiavari-chairs',  name: 'Chiavari Chairs',      images: ['/rental/rental2.jpg'], fullPrice: 5,   unit: 'chair', maxQty: 40, minQty: 10 },
   { id: 3, key: 'grad-marquee',     name: 'Grad Marquee Letters', images: ['/rental/rental3.jpg'], fullPrice: 200, unit: 'item',  maxQty: 1  },
 ]
 
@@ -77,7 +78,8 @@ function Lightbox({ item, onClose }: { item: ExperienceItem; onClose: () => void
 
 // ── Payment Panel ────────────────────────────────────────────
 function PaymentPanel({ item, onClose }: { item: ExperienceItem; onClose: () => void }): React.ReactElement {
-  const [qty,     setQty]     = useState<number>(1)
+  const minQty = item.minQty ?? 1
+  const [qty,     setQty]     = useState<number>(minQty)
   const [loading, setLoading] = useState<PaymentType | null>(null)
 
   const total   = item.fullPrice * qty
@@ -102,11 +104,11 @@ function PaymentPanel({ item, onClose }: { item: ExperienceItem; onClose: () => 
           {/* Quantity (chairs only) */}
           {item.unit === 'chair' && (
             <div>
-              <label className="text-[12px] font-bold text-text-muted uppercase tracking-wider block mb-2">Number of Chairs (max {item.maxQty})</label>
+              <label className="text-[12px] font-bold text-text-muted uppercase tracking-wider block mb-2">Number of Chairs (min {minQty}, max {item.maxQty})</label>
               <div className="flex items-center gap-3">
                 <button
                   className="w-9 h-9 rounded-full border border-border-col bg-white flex items-center justify-center text-lg font-bold text-text-dark cursor-pointer hover:border-gold hover:text-gold transition-colors"
-                  onClick={() => setQty((q) => Math.max(1, q - 1))}
+                  onClick={() => setQty((q) => Math.max(minQty, q - 1))}
                 >−</button>
                 <span className="text-[20px] font-bold text-text-dark w-8 text-center">{qty}</span>
                 <button
