@@ -99,8 +99,7 @@ function FleetCard({ item, onOpen }: { item: FleetItem; onOpen: () => void }): R
       className="rounded-card overflow-hidden text-left shadow-sm bg-off-white border border-border-col cursor-pointer hover:-translate-y-1 hover:shadow-lg transition-all duration-200"
       onClick={onOpen}
     >
-      {/* fleet-card-img keeps animation CSS */}
-      <div className="fleet-card-img">
+      <div className="relative overflow-hidden h-[210px]">
         {item.images.map((src, i) => (
           <img key={src} src={src} alt={item.name} className={`fleet-card-slide${i === slide ? ' fleet-card-slide--active' : ''}`} />
         ))}

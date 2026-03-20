@@ -119,55 +119,105 @@ export default function DateTimePicker({
   const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone
 
   return (
-    <div className="dtp-overlay" onClick={onCancel}>
-      <div className="dtp-modal" onClick={(e: React.MouseEvent) => e.stopPropagation()}>
-
-        <p className="dtp-label">Event Date &amp; Time*</p>
+    /* Overlay */
+    <div
+      className="fixed inset-0 bg-[rgba(30,21,8,0.55)] backdrop-blur-[4px] z-[200] flex items-center justify-center p-4"
+      onClick={onCancel}
+    >
+      {/* Modal card */}
+      <div
+        className="bg-cream rounded-[20px] px-7 mob:px-4 pt-7 mob:pt-5 pb-[22px] mob:pb-4 w-full max-w-[460px] shadow-[0_24px_64px_rgba(30,21,8,0.30)]"
+        onClick={(e: React.MouseEvent) => e.stopPropagation()}
+      >
+        {/* Label */}
+        <p className="text-[12px] font-semibold text-text-muted tracking-[0.5px] uppercase mb-[14px]">
+          Event Date &amp; Time*
+        </p>
 
         {/* Month nav */}
-        <div className="dtp-month-nav">
-          <span className="dtp-month-title">{MONTHS[viewMonth]} {viewYear}</span>
-          <div className="dtp-arrows">
-            <button className="dtp-arrow" onClick={prevMonth} aria-label="Previous month">‹</button>
-            <button className="dtp-arrow" onClick={nextMonth} aria-label="Next month">›</button>
+        <div className="flex items-center justify-between mb-[18px]">
+          <span className="text-[20px] mob:text-[17px] font-bold text-text-dark tracking-[-0.5px]">
+            {MONTHS[viewMonth]} {viewYear}
+          </span>
+          <div className="flex gap-[6px]">
+            <button
+              className="w-[34px] h-[34px] rounded-full border border-border-col bg-off-white text-text-dark text-[18px] leading-none cursor-pointer flex items-center justify-center transition-colors hover:bg-gold hover:border-gold hover:text-off-white"
+              onClick={prevMonth}
+              aria-label="Previous month"
+            >
+              ‹
+            </button>
+            <button
+              className="w-[34px] h-[34px] rounded-full border border-border-col bg-off-white text-text-dark text-[18px] leading-none cursor-pointer flex items-center justify-center transition-colors hover:bg-gold hover:border-gold hover:text-off-white"
+              onClick={nextMonth}
+              aria-label="Next month"
+            >
+              ›
+            </button>
           </div>
         </div>
 
         {/* Weekday headers */}
-        <div className="dtp-weekdays">
-          {WEEKDAYS.map((d) => <span key={d}>{d}</span>)}
-        </div>
-
-        {/* Day grid */}
-        <div className="dtp-days">
-          {cells.map((day, i) => (
-            <button
-              key={i}
-              className={[
-                'dtp-day',
-                day === null                ? 'dtp-day--empty'    : '',
-                day && selectedDay === day  ? 'dtp-day--selected' : '',
-                day && isToday(day)         ? 'dtp-day--today'    : '',
-                day && isPast(day)          ? 'dtp-day--past'     : '',
-                day && isReserved(day)      ? 'dtp-day--reserved' : '',
-              ].join(' ').trim()}
-              disabled={!day || isPast(day) || isReserved(day)}
-              onClick={() => day && setSelectedDay(day)}
-            >
-              {day ?? ''}
-            </button>
+        <div className="grid grid-cols-7 text-center mb-2">
+          {WEEKDAYS.map((d) => (
+            <span key={d} className="text-[12px] font-semibold text-text-muted py-1 tracking-[0.3px]">
+              {d}
+            </span>
           ))}
         </div>
 
+        {/* Day grid */}
+        <div className="grid grid-cols-7 gap-[2px] mb-5">
+          {cells.map((day, i) => {
+            const empty    = day === null
+            const selected = Boolean(day && selectedDay === day)
+            const past     = Boolean(day && isPast(day))
+            const reserved = Boolean(day && isReserved(day))
+            const todayDay = Boolean(day && isToday(day))
+
+            const dayCls = [
+              // base
+              'aspect-square rounded-full border-none text-[13.5px] font-medium cursor-pointer transition-[background,color] flex items-center justify-center p-0',
+              // empty / past → invisible
+              empty || past ? 'opacity-0 pointer-events-none' : '',
+              // selected
+              selected ? 'bg-gold text-off-white font-bold' : '',
+              // today (not selected)
+              todayDay && !selected ? 'border border-[1.5px] border-gold text-gold' : '',
+              // reserved
+              reserved ? 'bg-[#f3e6e6] text-[#c0392b] line-through cursor-not-allowed opacity-60' : '',
+              // default hover (not disabled, not selected, not reserved)
+              !selected && !reserved && !empty && !past ? 'hover:bg-ivory text-text-dark' : '',
+            ].filter(Boolean).join(' ')
+
+            return (
+              <button
+                key={i}
+                className={dayCls}
+                disabled={!day || isPast(day) || isReserved(day)}
+                onClick={() => day && setSelectedDay(day)}
+              >
+                {day ?? ''}
+              </button>
+            )
+          })}
+        </div>
+
         {/* Timezone */}
-        <p className="dtp-timezone">{timezone}</p>
+        <p className="text-[12px] text-text-muted font-semibold tracking-[0.3px] mb-[10px]">
+          {timezone}
+        </p>
 
         {/* Time slots */}
-        <div className="dtp-times">
+        <div className="grid grid-cols-3 gap-2 mob:gap-[6px] max-h-[160px] overflow-y-auto mb-5 pr-[2px] [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-border-col [&::-webkit-scrollbar-thumb]:rounded">
           {TIME_SLOTS.map((t) => (
             <button
               key={t}
-              className={`dtp-time${selectedTime === t ? ' dtp-time--selected' : ''}`}
+              className={`py-[9px] mob:py-2 px-[6px] mob:px-1 rounded-[10px] border text-[13px] mob:text-[12px] font-medium cursor-pointer text-center transition-all ${
+                selectedTime === t
+                  ? 'bg-gold border-gold text-off-white font-semibold'
+                  : 'bg-off-white border-border-col text-text-dark hover:border-gold-light hover:bg-ivory'
+              }`}
               onClick={() => setSelectedTime(t)}
             >
               {t}
@@ -175,12 +225,22 @@ export default function DateTimePicker({
           ))}
         </div>
 
-        <hr className="dtp-divider" />
+        {/* Divider */}
+        <hr className="border-none border-t border-border-col mb-4" />
 
         {/* Actions */}
-        <div className="dtp-actions">
-          <button className="dtp-btn-cancel"   onClick={onCancel}>Cancel</button>
-          <button className="dtp-btn-schedule" onClick={handleConfirm} disabled={!selectedDay}>
+        <div className="flex gap-[10px] justify-end">
+          <button
+            className="px-6 py-[11px] rounded-pill border border-border-col bg-off-white text-text-mid text-[14px] font-medium cursor-pointer transition-colors hover:bg-ivory"
+            onClick={onCancel}
+          >
+            Cancel
+          </button>
+          <button
+            className="px-7 py-[11px] rounded-pill border-none bg-gold text-off-white text-[14px] font-semibold cursor-pointer transition-colors hover:bg-gold-dark disabled:opacity-45 disabled:cursor-default"
+            onClick={handleConfirm}
+            disabled={!selectedDay}
+          >
             Schedule
           </button>
         </div>

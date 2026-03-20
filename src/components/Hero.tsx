@@ -162,111 +162,127 @@ export default function Hero(): React.ReactElement {
     }).catch(() => {/* silent – WhatsApp message already sent */})
   }
 
+  // Shared input/select classes
+  const inputCls = 'w-full bg-white/[0.06] border border-[rgba(160,134,80,0.30)] rounded-lg px-3 py-2 text-off-white text-[13px] outline-none transition-colors focus:border-[rgba(160,134,80,0.85)] appearance-none placeholder:text-white/30'
+  const labelCls = 'block text-[11px] text-white/55 mb-[5px] font-medium'
+
   return (
     <>
-      <section className="hero">
+      {/* hero — relative, full-viewport, flex row with space-between */}
+      <section className="relative w-full min-h-screen overflow-hidden flex items-center justify-between tab:flex-col tab:items-center tab:justify-center px-[52px] tab:px-6 mob:px-4 py-[80px] tab:pt-[100px] tab:pb-[80px] mob:py-[80px] mob:pb-[70px] gap-6 tab:gap-8 mob:gap-6">
 
         {/* ── Background Slideshow ── */}
-        <div className="hero-slides">
+        <div className="absolute inset-0 z-0">
           {HERO_IMAGES.map((src, i) => (
             <div key={src} className={`hero-slide${i === currentSlide ? ' active' : ''}`}>
-              <img src={src} alt="" />
+              <img src={src} alt="" className="w-full h-full object-cover block" />
             </div>
           ))}
-          <div className="hero-overlay" />
+          {/* Gradient overlay — left side dark, right side transparent */}
+          <div className="absolute inset-0" style={{ background: 'linear-gradient(to right, rgba(30,21,8,0.82) 0%, rgba(30,21,8,0.50) 55%, rgba(30,21,8,0.12) 100%)' }} />
         </div>
 
         {/* ── Left: Headline ── */}
-        <div className="hero-content">
-          <h1 className="hero-title">
+        <div className="flex-1 text-off-white max-w-[460px] tab:max-w-full tab:text-center relative z-[2] -mt-10 tab:mt-0">
+          <h1 className="text-[42px] tab:text-[32px] mob:text-[26px] font-bold leading-[1.18] mob:leading-[1.25] mb-[18px] tracking-[-0.5px]">
             Elegance in Every<br />Detail for Your<br />Special Day
           </h1>
-          <p className="hero-subtitle">
+          <p className="text-[13px] mob:text-[12px] italic text-white/[0.78] leading-[1.8] mb-7">
             Transform your event with our curated collection of premium<br />
             decorations, each crafted to bring sophistication and style<br />
             to your most cherished moments.
           </p>
         </div>
 
-        {/* ── Right: Booking Form ── */}
-        <div className="booking-form" id="booking-form">
-
+        {/* ── Right: Booking Form ── hidden on tablet/mobile (tab breakpoint) ── */}
+        <div
+          className="relative z-[2] w-[292px] tab:hidden flex-shrink-0 bg-[rgba(30,21,8,0.86)] backdrop-blur-[14px] rounded-card p-[22px_20px_20px] text-off-white border border-[rgba(160,134,80,0.28)]"
+          id="booking-form"
+        >
           {/* Social icons at top */}
-          <div className="form-socials">
+          <div className="flex gap-2 justify-center mb-[14px] pb-[14px] border-b border-[rgba(160,134,80,0.25)]">
             {SOCIAL_LINKS.map(({ Icon, label, href }) => (
-              <a key={label} href={href} aria-label={label} target="_blank" rel="noreferrer" className="form-social-icon">
+              <a
+                key={label}
+                href={href}
+                aria-label={label}
+                target="_blank"
+                rel="noreferrer"
+                className="w-8 h-8 rounded-full border border-white/[0.28] text-white/[0.82] flex items-center justify-center no-underline transition-colors hover:bg-[rgba(160,134,80,0.35)] hover:border-gold hover:text-off-white"
+              >
                 <Icon />
               </a>
             ))}
           </div>
 
-          <h3>Fill in the box provide your information</h3>
+          <h3 className="text-[14px] font-semibold leading-[1.45] mb-4">Fill in the box provide your information</h3>
 
-          <div className="form-group">
-            <label>Full Name*</label>
-            <input type="text" placeholder="Your Full Name" value={form.fullName} onChange={handleChange('fullName')} />
-            {errors.fullName && <span className="form-error">{errors.fullName}</span>}
+          <div className="mb-[11px]">
+            <label className={labelCls}>Full Name*</label>
+            <input type="text" placeholder="Your Full Name" value={form.fullName} onChange={handleChange('fullName')} className={inputCls} />
+            {errors.fullName && <span className="text-xs text-red-400 mt-1 block">{errors.fullName}</span>}
           </div>
 
-          <div className="form-group">
-            <label>Phone Number*</label>
-            <input type="tel" placeholder="+1 234 567 8900" value={form.phone} onChange={handleChange('phone')} />
-            {errors.phone && <span className="form-error">{errors.phone}</span>}
+          <div className="mb-[11px]">
+            <label className={labelCls}>Phone Number*</label>
+            <input type="tel" placeholder="+1 234 567 8900" value={form.phone} onChange={handleChange('phone')} className={inputCls} />
+            {errors.phone && <span className="text-xs text-red-400 mt-1 block">{errors.phone}</span>}
           </div>
 
           {/* ── Service Type ── */}
-          <div className="form-group">
-            <label>Service Type*</label>
-            <select value={form.serviceType} onChange={handleChange('serviceType')}>
+          <div className="mb-[11px]">
+            <label className={labelCls}>Service Type*</label>
+            <select value={form.serviceType} onChange={handleChange('serviceType')} className={inputCls}>
               <option value="">Select service type</option>
               <option value="Rental">Rental</option>
               <option value="Event Decor">Event Decor</option>
             </select>
-            {errors.serviceType && <span className="form-error">{errors.serviceType}</span>}
+            {errors.serviceType && <span className="text-xs text-red-400 mt-1 block">{errors.serviceType}</span>}
           </div>
 
           {/* ── Rental sub-fields ── */}
           {form.serviceType === 'Rental' && (
-            <div className="form-group">
-              <label>Delivery Type*</label>
-              <select value={form.deliveryType} onChange={handleChange('deliveryType')}>
+            <div className="mb-[11px]">
+              <label className={labelCls}>Delivery Type*</label>
+              <select value={form.deliveryType} onChange={handleChange('deliveryType')} className={inputCls}>
                 <option value="">Select delivery type</option>
                 <option value="Drop-off">Drop-off</option>
                 <option value="Pick-up">Pick-up</option>
               </select>
-              {errors.deliveryType && <span className="form-error">{errors.deliveryType}</span>}
+              {errors.deliveryType && <span className="text-xs text-red-400 mt-1 block">{errors.deliveryType}</span>}
             </div>
           )}
 
           {form.serviceType === 'Rental' && form.deliveryType === 'Drop-off' && (
-            <div className="form-group">
-              <label>Zip Code*</label>
+            <div className="mb-[11px]">
+              <label className={labelCls}>Zip Code*</label>
               <input
                 type="text"
                 placeholder="Enter zip code"
                 maxLength={10}
                 value={form.zipCode}
                 onChange={handleChange('zipCode')}
+                className={inputCls}
               />
-              {errors.zipCode && <span className="form-error">{errors.zipCode}</span>}
+              {errors.zipCode && <span className="text-xs text-red-400 mt-1 block">{errors.zipCode}</span>}
             </div>
           )}
 
           {/* ── Event Decor sub-fields ── */}
           {form.serviceType === 'Event Decor' && (
-            <div className="form-group">
-              <label>Event Category*</label>
-              <select value={form.eventCategory} onChange={handleChange('eventCategory')}>
+            <div className="mb-[11px]">
+              <label className={labelCls}>Event Category*</label>
+              <select value={form.eventCategory} onChange={handleChange('eventCategory')} className={inputCls}>
                 <option value="">Select event category</option>
                 {EVENT_CATEGORIES.map((c) => <option key={c}>{c}</option>)}
               </select>
-              {errors.eventCategory && <span className="form-error">{errors.eventCategory}</span>}
+              {errors.eventCategory && <span className="text-xs text-red-400 mt-1 block">{errors.eventCategory}</span>}
             </div>
           )}
 
           {/* ── Date & Time ── */}
-          <div className="form-group">
-            <label>Event Date &amp; Time*</label>
+          <div className="mb-[11px]">
+            <label className={labelCls}>Event Date &amp; Time*</label>
             <button
               type="button"
               className={`dtp-trigger${form.date ? ' dtp-trigger--filled' : ''}`}
@@ -274,18 +290,27 @@ export default function Hero(): React.ReactElement {
             >
               {formatDateTimeDisplay(form.date, form.time)}
             </button>
-            {errors.date && <span className="form-error">{errors.date}</span>}
+            {errors.date && <span className="text-xs text-red-400 mt-1 block">{errors.date}</span>}
           </div>
 
-          <button className="btn-book" onClick={handleGetQuote}>Get a Quote</button>
+          <button
+            className="w-full py-3 bg-gold hover:bg-gold-dark active:scale-[0.98] text-off-white border-none rounded-lg text-[14px] font-semibold cursor-pointer mt-[6px] transition-colors"
+            onClick={handleGetQuote}
+          >
+            Get a Quote
+          </button>
         </div>
 
         {/* ── Slide Dot Indicators ── */}
-        <div className="hero-dots">
+        <div className="absolute bottom-7 left-1/2 -translate-x-1/2 flex gap-2 z-[3]">
           {HERO_IMAGES.map((_, i) => (
             <button
               key={i}
-              className={`hero-dot${i === currentSlide ? ' active' : ''}`}
+              className={`w-2 h-2 rounded-full border-[1.5px] p-0 cursor-pointer transition-colors ${
+                i === currentSlide
+                  ? 'bg-gold border-gold'
+                  : 'bg-transparent border-white/55'
+              }`}
               onClick={() => setCurrentSlide(i)}
               aria-label={`Slide ${i + 1}`}
             />

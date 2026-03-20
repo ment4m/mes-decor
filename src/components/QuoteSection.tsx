@@ -104,35 +104,50 @@ export default function QuoteSection(): React.ReactElement {
     }).catch(() => {/* silent */})
   }
 
+  // Shared input/select + label classes
+  const inputCls = 'w-full bg-white/[0.06] border border-[rgba(160,134,80,0.30)] rounded-lg px-3 py-2 text-off-white text-[13px] outline-none transition-colors focus:border-[rgba(160,134,80,0.85)] appearance-none placeholder:text-white/30'
+  const labelCls = 'block text-[11px] text-white/55 mb-[5px] font-medium'
+
   return (
     <>
-      <section className="quote-section" id="quote-section">
-        <h2 className="quote-section-title">Get a Quote</h2>
+      {/* Hidden on desktop (≥ 901px), shown as block on tablet/mobile (≤ 900px) */}
+      <section className="hidden tab:block bg-cream px-6 mob:px-4 py-14 mob:py-10 text-center" id="quote-section">
+        <h2 className="text-[28px] font-bold text-text-dark mb-6">Get a Quote</h2>
 
-        <div className="booking-form booking-form--standalone">
-          <div className="form-socials">
+        {/* Form card — dark background, max-width centred */}
+        <div className="max-w-[440px] mx-auto bg-dark rounded-card px-5 mob:px-[14px] py-6 mob:py-[18px] text-left border border-[rgba(160,134,80,0.28)]">
+
+          {/* Social icons */}
+          <div className="flex gap-[6px] mob:gap-[6px] justify-center mb-[14px] pb-[14px] border-b border-[rgba(160,134,80,0.25)]">
             {SOCIAL_LINKS.map(({ Icon, label, href }) => (
-              <a key={label} href={href} aria-label={label} target="_blank" rel="noreferrer" className="form-social-icon">
+              <a
+                key={label}
+                href={href}
+                aria-label={label}
+                target="_blank"
+                rel="noreferrer"
+                className="w-8 h-8 mob:w-7 mob:h-7 rounded-full border border-white/[0.28] text-white/[0.82] flex items-center justify-center no-underline transition-colors hover:bg-[rgba(160,134,80,0.35)] hover:border-gold hover:text-off-white"
+              >
                 <Icon />
               </a>
             ))}
           </div>
 
-          <h3>Fill in your information</h3>
+          <h3 className="text-[13px] font-semibold leading-[1.45] mb-4 text-off-white">Fill in your information</h3>
 
-          <div className="form-group">
-            <label>Full Name*</label>
-            <input type="text" placeholder="Your Full Name" value={form.fullName} onChange={handleChange('fullName')} />
+          <div className="mb-[11px]">
+            <label className={labelCls}>Full Name*</label>
+            <input type="text" placeholder="Your Full Name" value={form.fullName} onChange={handleChange('fullName')} className={inputCls} />
           </div>
 
-          <div className="form-group">
-            <label>Phone Number*</label>
-            <input type="tel" placeholder="+1 234 567 8900" value={form.phone} onChange={handleChange('phone')} />
+          <div className="mb-[11px]">
+            <label className={labelCls}>Phone Number*</label>
+            <input type="tel" placeholder="+1 234 567 8900" value={form.phone} onChange={handleChange('phone')} className={inputCls} />
           </div>
 
-          <div className="form-group">
-            <label>Service Type*</label>
-            <select value={form.serviceType} onChange={handleChange('serviceType')}>
+          <div className="mb-[11px]">
+            <label className={labelCls}>Service Type*</label>
+            <select value={form.serviceType} onChange={handleChange('serviceType')} className={inputCls}>
               <option value="">Select service type</option>
               <option value="Rental">Rental</option>
               <option value="Event Decor">Event Decor</option>
@@ -140,9 +155,9 @@ export default function QuoteSection(): React.ReactElement {
           </div>
 
           {form.serviceType === 'Rental' && (
-            <div className="form-group">
-              <label>Delivery Type*</label>
-              <select value={form.deliveryType} onChange={handleChange('deliveryType')}>
+            <div className="mb-[11px]">
+              <label className={labelCls}>Delivery Type*</label>
+              <select value={form.deliveryType} onChange={handleChange('deliveryType')} className={inputCls}>
                 <option value="">Select delivery type</option>
                 <option value="Drop-off">Drop-off</option>
                 <option value="Pick-up">Pick-up</option>
@@ -151,24 +166,24 @@ export default function QuoteSection(): React.ReactElement {
           )}
 
           {form.serviceType === 'Rental' && form.deliveryType === 'Drop-off' && (
-            <div className="form-group">
-              <label>Zip Code*</label>
-              <input type="text" placeholder="Enter zip code" maxLength={10} value={form.zipCode} onChange={handleChange('zipCode')} />
+            <div className="mb-[11px]">
+              <label className={labelCls}>Zip Code*</label>
+              <input type="text" placeholder="Enter zip code" maxLength={10} value={form.zipCode} onChange={handleChange('zipCode')} className={inputCls} />
             </div>
           )}
 
           {form.serviceType === 'Event Decor' && (
-            <div className="form-group">
-              <label>Event Category*</label>
-              <select value={form.eventCategory} onChange={handleChange('eventCategory')}>
+            <div className="mb-[11px]">
+              <label className={labelCls}>Event Category*</label>
+              <select value={form.eventCategory} onChange={handleChange('eventCategory')} className={inputCls}>
                 <option value="">Select event category</option>
                 {EVENT_CATEGORIES.map((c) => <option key={c}>{c}</option>)}
               </select>
             </div>
           )}
 
-          <div className="form-group">
-            <label>Event Date &amp; Time*</label>
+          <div className="mb-[11px]">
+            <label className={labelCls}>Event Date &amp; Time*</label>
             <button
               type="button"
               className={`dtp-trigger${form.date ? ' dtp-trigger--filled' : ''}`}
@@ -178,7 +193,12 @@ export default function QuoteSection(): React.ReactElement {
             </button>
           </div>
 
-          <button className="btn-book" onClick={handleGetQuote}>Get a Quote</button>
+          <button
+            className="w-full py-3 bg-gold hover:bg-gold-dark active:scale-[0.98] text-off-white border-none rounded-lg text-[14px] font-semibold cursor-pointer mt-[6px] transition-colors"
+            onClick={handleGetQuote}
+          >
+            Get a Quote
+          </button>
         </div>
       </section>
 
