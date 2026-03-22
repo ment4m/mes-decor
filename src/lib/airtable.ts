@@ -85,3 +85,31 @@ export async function updateBookingStatus(id: string, status: BookingStatus): Pr
 export async function deleteBooking(id: string): Promise<void> {
   await fetch(`${API_URL}/${id}`, { method: 'DELETE', headers })
 }
+
+// Create a booking manually (admin)
+export async function createBooking(data: BookingData & { status: BookingStatus }): Promise<Booking> {
+  const res  = await fetch(API_URL, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({
+      fields: {
+        Name:    data.name,
+        Phone:   data.phone,
+        Service: data.service,
+        Date:    data.date,
+        Time:    data.time,
+        Status:  data.status,
+      },
+    }),
+  })
+  const json = await res.json()
+  return {
+    id:      json.id,
+    name:    json.fields.Name    ?? '',
+    phone:   json.fields.Phone   ?? '',
+    service: json.fields.Service ?? '',
+    date:    json.fields.Date    ?? '',
+    time:    json.fields.Time    ?? '',
+    status:  json.fields.Status  ?? 'Pending',
+  }
+}

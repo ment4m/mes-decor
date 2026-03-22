@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { fetchAllBookings, updateBookingStatus, deleteBooking, type Booking, type BookingStatus } from '../lib/airtable'
+import { fetchAllBookings, updateBookingStatus, deleteBooking, createBooking, type Booking, type BookingStatus } from '../lib/airtable'
 
 const STATUS_COLORS: Record<BookingStatus | 'Completed', string> = {
   Pending:   'bg-yellow-100 text-yellow-800 border-yellow-300',
@@ -36,6 +36,19 @@ export default function Admin(): React.ReactElement {
   const [filter,    setFilter]    = useState<BookingStatus | 'All' | 'Completed'>('All')
   const [updating,  setUpdating]  = useState<string | null>(null)
   const [confirmDel, setConfirmDel] = useState<string | null>(null)
+  const [showAdd,    setShowAdd]    = useState(false)
+  const [addForm,    setAddForm]    = useState({ name: '', phone: '', service: '', date: '', time: '', status: 'Pending' as BookingStatus })
+  const [addLoading, setAddLoading] = useState(false)
+
+  const handleAdd = async (): Promise<void> => {
+    if (!addForm.name || !addForm.phone || !addForm.service || !addForm.date) return
+    setAddLoading(true)
+    const newBooking = await createBooking(addForm)
+    setBookings((prev) => [newBooking, ...prev])
+    setShowAdd(false)
+    setAddForm({ name: '', phone: '', service: '', date: '', time: '', status: 'Pending' })
+    setAddLoading(false)
+  }
 
   const login = async (): Promise<void> => {
     const res  = await fetch('/.netlify/functions/admin-auth', {
@@ -119,6 +132,12 @@ export default function Admin(): React.ReactElement {
             <h1 className="text-text-dark text-[24px] font-bold">Bookings</h1>
           </div>
           <div className="flex items-center gap-2">
+            <button
+              onClick={() => setShowAdd(true)}
+              className="px-4 py-2 bg-gold text-off-white text-[13px] font-semibold rounded-[10px] border-none cursor-pointer hover:bg-gold-dark transition-colors"
+            >
+              + Add Booking
+            </button>
             <button
               onClick={() => { setLoading(true); fetchAllBookings().then(setBookings).finally(() => setLoading(false)) }}
               className="px-4 py-2 bg-dark text-off-white text-[13px] font-semibold rounded-[10px] border-none cursor-pointer hover:bg-dark-deep transition-colors"
@@ -233,6 +252,55 @@ export default function Admin(): React.ReactElement {
           </div>
         )}
       </div>
+
+      {/* Add Booking Modal */}
+      {showAdd && (
+        <div className="fixed inset-0 bg-[rgba(20,12,4,0.75)] backdrop-blur-sm z-[500] flex items-center justify-center p-4" onClick={() => setShowAdd(false)}>
+          <div className="bg-off-white rounded-[20px] w-full max-w-[420px] overflow-hidden shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <div className="bg-dark px-6 py-5 flex items-center justify-between">
+              <h3 className="text-off-white font-bold text-[17px]">Add Booking</h3>
+              <button className="bg-white/10 border-none text-off-white w-8 h-8 rounded-full cursor-pointer flex items-center justify-center hover:bg-white/20 transition-colors" onClick={() => setShowAdd(false)}>✕</button>
+            </div>
+            <div className="px-6 py-6 flex flex-col gap-4">
+              {[
+                { label: 'Full Name *',     field: 'name',    type: 'text',  placeholder: 'Customer name' },
+                { label: 'Phone *',         field: 'phone',   type: 'tel',   placeholder: '+1 234 567 8900' },
+                { label: 'Service *',       field: 'service', type: 'text',  placeholder: 'e.g. Event Decor – Birthday' },
+                { label: 'Date *',          field: 'date',    type: 'date',  placeholder: '' },
+                { label: 'Time',            field: 'time',    type: 'time',  placeholder: '' },
+              ].map(({ label, field, type, placeholder }) => (
+                <div key={field}>
+                  <label className="text-[12px] font-bold text-text-muted uppercase tracking-wider block mb-1">{label}</label>
+                  <input
+                    type={type}
+                    placeholder={placeholder}
+                    value={addForm[field as keyof typeof addForm]}
+                    onChange={(e) => setAddForm((f) => ({ ...f, [field]: e.target.value }))}
+                    className="w-full border border-border-col rounded-[10px] px-3 py-2.5 text-[13px] text-text-dark outline-none focus:border-gold bg-white"
+                  />
+                </div>
+              ))}
+              <div>
+                <label className="text-[12px] font-bold text-text-muted uppercase tracking-wider block mb-1">Status</label>
+                <select
+                  value={addForm.status}
+                  onChange={(e) => setAddForm((f) => ({ ...f, status: e.target.value as BookingStatus }))}
+                  className="w-full border border-border-col rounded-[10px] px-3 py-2.5 text-[13px] text-text-dark outline-none focus:border-gold bg-white"
+                >
+                  {ALL_STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
+                </select>
+              </div>
+              <button
+                onClick={() => void handleAdd()}
+                disabled={addLoading || !addForm.name || !addForm.phone || !addForm.service || !addForm.date}
+                className="w-full py-3 rounded-pill bg-gold text-off-white font-semibold text-[14px] border-none cursor-pointer hover:bg-gold-dark transition-colors disabled:opacity-50"
+              >
+                {addLoading ? 'Saving…' : 'Add Booking'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
