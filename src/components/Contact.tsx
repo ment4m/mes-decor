@@ -44,6 +44,9 @@ export default function Contact(): React.ReactElement {
         </div>
 
       </div>
+      <div className="text-center mt-4">
+        <a href="/admin" className="text-[11px] text-text-muted/50 hover:text-text-muted transition-colors no-underline">Admin</a>
+      </div>
     </footer>
   )
 }

@@ -43,3 +43,45 @@ export async function fetchReservedDates(): Promise<string[]> {
     .map((r: { fields: { Date?: string } }) => r.fields.Date)
     .filter(Boolean) as string[]
 }
+
+export type BookingStatus = 'Pending' | 'Reserved' | 'Cancelled'
+
+export interface Booking {
+  id:      string
+  name:    string
+  phone:   string
+  service: string
+  date:    string
+  time:    string
+  status:  BookingStatus
+}
+
+// Fetch all bookings sorted by date descending
+export async function fetchAllBookings(): Promise<Booking[]> {
+  const url = `${API_URL}?sort[0][field]=Date&sort[0][direction]=desc`
+  const res  = await fetch(url, { headers })
+  const json = await res.json()
+  return (json.records ?? []).map((r: { id: string; fields: Record<string, string> }) => ({
+    id:      r.id,
+    name:    r.fields.Name    ?? '',
+    phone:   r.fields.Phone   ?? '',
+    service: r.fields.Service ?? '',
+    date:    r.fields.Date    ?? '',
+    time:    r.fields.Time    ?? '',
+    status:  (r.fields.Status as BookingStatus) ?? 'Pending',
+  }))
+}
+
+// Update booking status
+export async function updateBookingStatus(id: string, status: BookingStatus): Promise<void> {
+  await fetch(`${API_URL}/${id}`, {
+    method:  'PATCH',
+    headers,
+    body:    JSON.stringify({ fields: { Status: status } }),
+  })
+}
+
+// Delete a booking
+export async function deleteBooking(id: string): Promise<void> {
+  await fetch(`${API_URL}/${id}`, { method: 'DELETE', headers })
+}

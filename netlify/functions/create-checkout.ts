@@ -7,6 +7,7 @@ interface CheckoutBody {
   item:        'serpentine-table' | 'chiavari-chairs' | 'grad-marquee'
   paymentType: 'full' | 'deposit'
   quantity:    number
+  deliveryFee?: number  // in dollars, 0 = pickup
 }
 
 const ITEMS = {
@@ -21,16 +22,15 @@ export const handler: Handler = async (event) => {
   }
 
   try {
-    const { item, paymentType, quantity = 1 }: CheckoutBody = JSON.parse(event.body ?? '{}')
+    const { item, paymentType, quantity = 1, deliveryFee = 0 }: CheckoutBody = JSON.parse(event.body ?? '{}')
     const product = ITEMS[item]
     if (!product) return { statusCode: 400, body: 'Invalid item' }
 
     const unitAmount = paymentType === 'full' ? product.fullPrice : product.depositPrice
     const qty        = Math.min(Math.max(1, quantity), product.maxQty)
 
-    const session = await stripe.checkout.sessions.create({
-      payment_method_types: ['card'],
-      line_items: [{
+    const lineItems: Stripe.Checkout.SessionCreateParams.LineItem[] = [
+      {
         price_data: {
           currency:     'usd',
           unit_amount:  unitAmount,
@@ -41,10 +41,33 @@ export const handler: Handler = async (event) => {
           },
         },
         quantity: qty,
-      }],
-      mode:        'payment',
-      success_url: `${event.headers.origin}/payment-success`,
-      cancel_url:  `${event.headers.origin}/#rentals`,
+      },
+    ]
+
+    // Add delivery fee as separate line item if applicable
+    if (deliveryFee > 0) {
+      const deliveryAmountCents = paymentType === 'deposit'
+        ? Math.round(deliveryFee * 100 * 0.5)
+        : Math.round(deliveryFee * 100)
+
+      lineItems.push({
+        price_data: {
+          currency:     'usd',
+          unit_amount:  deliveryAmountCents,
+          product_data: {
+            name: paymentType === 'deposit' ? 'Delivery Fee – 50%' : 'Delivery Fee',
+          },
+        },
+        quantity: 1,
+      })
+    }
+
+    const session = await stripe.checkout.sessions.create({
+      payment_method_types: ['card'],
+      line_items:   lineItems,
+      mode:         'payment',
+      success_url:  `${event.headers.origin}/payment-success`,
+      cancel_url:   `${event.headers.origin}/#rentals`,
     })
 
     return {
