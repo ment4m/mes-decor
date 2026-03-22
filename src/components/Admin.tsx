@@ -1,8 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { fetchAllBookings, updateBookingStatus, deleteBooking, type Booking, type BookingStatus } from '../lib/airtable'
 
-const ADMIN_PASSWORD = 'mesdecor2026'
-
 const STATUS_COLORS: Record<BookingStatus | 'Completed', string> = {
   Pending:   'bg-yellow-100 text-yellow-800 border-yellow-300',
   Reserved:  'bg-green-100 text-green-800 border-green-300',
@@ -39,8 +37,13 @@ export default function Admin(): React.ReactElement {
   const [updating,  setUpdating]  = useState<string | null>(null)
   const [confirmDel, setConfirmDel] = useState<string | null>(null)
 
-  const login = (): void => {
-    if (password === ADMIN_PASSWORD) { setAuthed(true); setPwError(false) }
+  const login = async (): Promise<void> => {
+    const res  = await fetch('/.netlify/functions/admin-auth', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ password }),
+    })
+    if (res.ok) { setAuthed(true); setPwError(false) }
     else setPwError(true)
   }
 
@@ -85,7 +88,7 @@ export default function Admin(): React.ReactElement {
                 type="password"
                 value={password}
                 onChange={(e) => { setPassword(e.target.value); setPwError(false) }}
-                onKeyDown={(e) => { if (e.key === 'Enter') login() }}
+                onKeyDown={(e) => { if (e.key === 'Enter') void login() }}
                 className="w-full border border-border-col rounded-[10px] px-3 py-2.5 text-[14px] text-text-dark outline-none focus:border-gold bg-white"
                 placeholder="Enter admin password"
                 autoFocus
@@ -93,7 +96,7 @@ export default function Admin(): React.ReactElement {
               {pwError && <p className="text-red-500 text-[12px] mt-1.5">Incorrect password</p>}
             </div>
             <button
-              onClick={login}
+              onClick={() => void login()}
               className="w-full py-3 rounded-pill bg-gold text-off-white font-semibold text-[14px] border-none cursor-pointer hover:bg-gold-dark transition-colors"
             >
               Login
