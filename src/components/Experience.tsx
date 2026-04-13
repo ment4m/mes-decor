@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useCallback } from 'react'
 
-type ItemKey = 'serpentine-table' | 'chiavari-chairs' | 'grad-marquee'
-type PaymentType = 'full' | 'deposit'
+export type ItemKey = 'serpentine-table' | 'chiavari-chairs' | 'grad-marquee'
+export type PaymentType = 'full' | 'deposit'
 type DeliveryType = 'pickup' | 'delivery'
 
-interface ExperienceItem {
+export interface ExperienceItem {
   id:        number
   key:       ItemKey
   name:      string
@@ -15,11 +15,13 @@ interface ExperienceItem {
   minQty?:   number
 }
 
-const ITEMS: ExperienceItem[] = [
+export const RENTAL_ITEMS: ExperienceItem[] = [
   { id: 1, key: 'serpentine-table', name: 'Serpentine Table',     images: ['/rental/rental1.jpg'], fullPrice: 300, unit: 'item',  maxQty: 1  },
   { id: 2, key: 'chiavari-chairs',  name: 'Chiavari Chairs',      images: ['/rental/rental2.jpg'], fullPrice: 5,   unit: 'chair', maxQty: 40, minQty: 10 },
   { id: 3, key: 'grad-marquee',     name: 'Grad Marquee Letters', images: ['/rental/rental3.jpg'], fullPrice: 200, unit: 'item',  maxQty: 1  },
 ]
+
+const ITEMS = RENTAL_ITEMS
 
 // ── Delivery helpers ─────────────────────────────────────────
 const ORS_KEY          = import.meta.env.VITE_ORS_KEY as string
@@ -58,11 +60,13 @@ async function calcDelivery(address: string): Promise<{ fee: number; miles: numb
 }
 
 // ── Checkout helper ──────────────────────────────────────────
-async function startCheckout(item: ItemKey, paymentType: PaymentType, quantity: number, deliveryFee: number): Promise<void> {
+interface CheckoutLineItem { name: string; amountCents: number; quantity: number }
+
+async function startCheckout(items: CheckoutLineItem[], paymentType: PaymentType): Promise<void> {
   const res  = await fetch('/.netlify/functions/create-checkout', {
     method:  'POST',
     headers: { 'Content-Type': 'application/json' },
-    body:    JSON.stringify({ item, paymentType, quantity, deliveryFee }),
+    body:    JSON.stringify({ items, paymentType }),
   })
   const data = await res.json()
   if (data.url) window.location.href = data.url
@@ -114,9 +118,13 @@ function Lightbox({ item, onClose }: { item: ExperienceItem; onClose: () => void
 }
 
 // ── Payment Panel ────────────────────────────────────────────
-function PaymentPanel({ item, onClose }: { item: ExperienceItem; onClose: () => void }): React.ReactElement {
+export function PaymentPanel({ item, onClose }: { item: ExperienceItem; onClose: () => void }): React.ReactElement {
   const minQty = item.minQty ?? 1
+
+  // Main item qty
   const [qty,          setQty]         = useState<number>(minQty)
+  // Additional items: key -> qty
+  const [extras,       setExtras]       = useState<Partial<Record<ItemKey, number>>>({})
   const [deliveryType, setDeliveryType] = useState<DeliveryType>('pickup')
   const [address,      setAddress]      = useState<string>('')
   const [zipCode,      setZipCode]      = useState<string>('')
@@ -125,11 +133,27 @@ function PaymentPanel({ item, onClose }: { item: ExperienceItem; onClose: () => 
   const [calculating,  setCalculating]  = useState<boolean>(false)
   const [loading,      setLoading]      = useState<PaymentType | null>(null)
 
-  const rentalTotal  = item.fullPrice * qty
-  const deliveryFee  = deliveryType === 'delivery' && deliveryInfo ? deliveryInfo.fee : 0
-  const grandTotal   = rentalTotal + deliveryFee
-  const deposit      = Math.round(grandTotal * 0.5)
-  const canPay       = deliveryType === 'pickup' || deliveryInfo !== null
+  const otherItems = ITEMS.filter((i) => i.key !== item.key)
+
+  const rentalTotal = item.fullPrice * qty
+    + otherItems.reduce((sum, i) => sum + (extras[i.key] ? i.fullPrice * (extras[i.key] as number) : 0), 0)
+  const deliveryFee = deliveryType === 'delivery' && deliveryInfo ? deliveryInfo.fee : 0
+  const grandTotal  = rentalTotal + deliveryFee
+  const deposit     = Math.round(grandTotal * 0.5)
+  const canPay      = deliveryType === 'pickup' || deliveryInfo !== null
+
+  const toggleExtra = (key: ItemKey, minQ: number): void => {
+    setExtras((prev) => {
+      const next = { ...prev }
+      if (next[key]) delete next[key]
+      else next[key] = minQ
+      return next
+    })
+  }
+
+  const setExtraQty = (key: ItemKey, q: number, max: number, min: number): void => {
+    setExtras((prev) => ({ ...prev, [key]: Math.min(max, Math.max(min, q)) }))
+  }
 
   const handleCalc = async (): Promise<void> => {
     if (!address.trim() || !zipCode.trim()) return
@@ -145,7 +169,14 @@ function PaymentPanel({ item, onClose }: { item: ExperienceItem; onClose: () => 
   const pay = async (type: PaymentType): Promise<void> => {
     if (!canPay) return
     setLoading(type)
-    await startCheckout(item.key, type, qty, deliveryFee)
+    const lineItems: CheckoutLineItem[] = [
+      { name: item.name, amountCents: item.fullPrice * qty * 100, quantity: 1 },
+      ...otherItems
+        .filter((i) => extras[i.key])
+        .map((i) => ({ name: i.name, amountCents: i.fullPrice * (extras[i.key] as number) * 100, quantity: 1 })),
+    ]
+    if (deliveryFee > 0) lineItems.push({ name: 'Delivery Fee', amountCents: deliveryFee * 100, quantity: 1 })
+    await startCheckout(lineItems, type)
     setLoading(null)
   }
 
@@ -185,6 +216,52 @@ function PaymentPanel({ item, onClose }: { item: ExperienceItem; onClose: () => 
                   className="w-9 h-9 rounded-full border border-border-col bg-white flex items-center justify-center text-lg font-bold text-text-dark cursor-pointer hover:border-gold hover:text-gold transition-colors"
                   onClick={() => setQty((q) => Math.min(item.maxQty, q + 1))}
                 >+</button>
+              </div>
+            </div>
+          )}
+
+          {/* Add another item */}
+          {otherItems.length > 0 && (
+            <div>
+              <label className="text-[12px] font-bold text-text-muted uppercase tracking-wider block mb-2">Add Another Item</label>
+              <div className="flex flex-col gap-2">
+                {otherItems.map((oi) => {
+                  const checked = Boolean(extras[oi.key])
+                  const oiMin   = oi.minQty ?? 1
+                  return (
+                    <div key={oi.key} className="bg-white border border-border-col rounded-[12px] px-4 py-3">
+                      <div className="flex items-center justify-between gap-3">
+                        <label className="flex items-center gap-2.5 cursor-pointer flex-1">
+                          <input
+                            type="checkbox"
+                            checked={checked}
+                            onChange={() => toggleExtra(oi.key, oiMin)}
+                            className="accent-gold w-4 h-4 cursor-pointer"
+                          />
+                          <div>
+                            <p className="text-[13px] font-semibold text-text-dark">{oi.name}</p>
+                            <p className="text-[12px] text-text-muted">
+                              {oi.unit === 'chair' ? `$${oi.fullPrice}/chair` : `$${oi.fullPrice}`}
+                            </p>
+                          </div>
+                        </label>
+                        {checked && oi.unit === 'chair' && (
+                          <div className="flex items-center gap-2 flex-shrink-0">
+                            <button
+                              className="w-7 h-7 rounded-full border border-border-col bg-white flex items-center justify-center text-sm font-bold text-text-dark cursor-pointer hover:border-gold hover:text-gold transition-colors"
+                              onClick={() => setExtraQty(oi.key, (extras[oi.key] ?? oiMin) - 1, oi.maxQty, oiMin)}
+                            >−</button>
+                            <span className="text-[14px] font-bold text-text-dark w-6 text-center">{extras[oi.key]}</span>
+                            <button
+                              className="w-7 h-7 rounded-full border border-border-col bg-white flex items-center justify-center text-sm font-bold text-text-dark cursor-pointer hover:border-gold hover:text-gold transition-colors"
+                              onClick={() => setExtraQty(oi.key, (extras[oi.key] ?? oiMin) + 1, oi.maxQty, oiMin)}
+                            >+</button>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )
+                })}
               </div>
             </div>
           )}

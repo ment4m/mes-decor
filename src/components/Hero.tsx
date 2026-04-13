@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { WhatsApp, Instagram } from './icons'
 import DateTimePicker from './DateTimePicker'
 import { submitBooking, fetchReservedDates } from '../lib/airtable'
+import { PaymentPanel, RENTAL_ITEMS, type ExperienceItem } from './Experience'
 
 // ── Types ──────────────────────────────────────────────────
 interface SocialLink {
@@ -60,6 +61,8 @@ export default function Hero(): React.ReactElement {
   const [showPicker,     setShowPicker]     = useState<boolean>(false)
   const [reservedDates,  setReservedDates]  = useState<string[]>([])
   const [errors,         setErrors]         = useState<Partial<Record<keyof BookingForm, string>>>({})
+  const [rentalItem,     setRentalItem]     = useState<ExperienceItem | null>(null)
+  const [payItem,        setPayItem]        = useState<ExperienceItem | null>(null)
   const [form, setForm] = useState<BookingForm>({
     fullName: '', phone: '',
     time: '09:00', date: '',
@@ -243,13 +246,17 @@ export default function Hero(): React.ReactElement {
           {/* ── Rental sub-fields ── */}
           {form.serviceType === 'Rental' && (
             <div className="mb-[11px]">
-              <label className={labelCls}>Delivery Type*</label>
-              <select value={form.deliveryType} onChange={handleChange('deliveryType')} className={inputCls}>
-                <option value="">Select delivery type</option>
-                <option value="Drop-off">Drop-off</option>
-                <option value="Pick-up">Pick-up</option>
+              <label className={labelCls}>Select Rental Item*</label>
+              <select
+                value={rentalItem?.key ?? ''}
+                onChange={(e) => setRentalItem(RENTAL_ITEMS.find((i) => i.key === e.target.value) ?? null)}
+                className={inputCls}
+              >
+                <option value="">Select item</option>
+                {RENTAL_ITEMS.map((i) => (
+                  <option key={i.key} value={i.key}>{i.name}</option>
+                ))}
               </select>
-              {errors.deliveryType && <span className="text-xs text-red-400 mt-1 block">{errors.deliveryType}</span>}
             </div>
           )}
 
@@ -295,9 +302,15 @@ export default function Hero(): React.ReactElement {
 
           <button
             className="w-full py-3 bg-gold hover:bg-gold-dark active:scale-[0.98] text-off-white border-none rounded-lg text-[14px] font-semibold cursor-pointer mt-[6px] transition-colors"
-            onClick={handleGetQuote}
+            onClick={() => {
+              if (form.serviceType === 'Rental') {
+                if (rentalItem) setPayItem(rentalItem)
+              } else {
+                handleGetQuote()
+              }
+            }}
           >
-            Get a Quote
+            {form.serviceType === 'Rental' ? 'Book Now' : 'Get a Quote'}
           </button>
         </div>
 
@@ -320,6 +333,8 @@ export default function Hero(): React.ReactElement {
       </section>
 
       {/* ── Custom Date & Time Picker ── rendered outside hero to avoid overflow clip ── */}
+      {payItem && <PaymentPanel item={payItem} onClose={() => setPayItem(null)} />}
+
       {showPicker && (
         <DateTimePicker
           initialDate={form.date}
