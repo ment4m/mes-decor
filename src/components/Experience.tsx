@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react'
 
-export type ItemKey = 'serpentine-table' | 'chiavari-chairs' | 'grad-marquee'
+export type ItemKey = 'serpentine-table' | 'chiavari-chairs' | 'grad-marquee' | 'velvet-loveseat' | 'backdrop-stand' | 'cylinder-pedestals' | 'gold-geo-stands' | 'gold-cocktail-tables' | 'white-box-pedestals'
 export type PaymentType = 'full' | 'deposit'
 type DeliveryType = 'pickup' | 'delivery'
 
@@ -16,9 +16,15 @@ export interface ExperienceItem {
 }
 
 export const RENTAL_ITEMS: ExperienceItem[] = [
-  { id: 1, key: 'serpentine-table', name: 'Serpentine Table',     images: ['/rental/rental1.jpg'], fullPrice: 300, unit: 'item',  maxQty: 1  },
-  { id: 2, key: 'chiavari-chairs',  name: 'Chiavari Chairs',      images: ['/rental/rental2.jpg'], fullPrice: 5,   unit: 'chair', maxQty: 40, minQty: 10 },
-  { id: 3, key: 'grad-marquee',     name: 'Grad Marquee Letters', images: ['/rental/rental3.jpg'], fullPrice: 200, unit: 'item',  maxQty: 1  },
+  { id: 1, key: 'serpentine-table',    name: 'Serpentine Table',        images: ['/rental/rental1.jpg'], fullPrice: 300, unit: 'item',  maxQty: 1  },
+  { id: 2, key: 'chiavari-chairs',     name: 'Chiavari Chairs',         images: ['/rental/rental2.jpg'], fullPrice: 5,   unit: 'chair', maxQty: 40, minQty: 10 },
+  { id: 3, key: 'grad-marquee',        name: 'Grad Marquee Letters',    images: ['/rental/rental3.jpg'], fullPrice: 200, unit: 'item',  maxQty: 1  },
+  { id: 4, key: 'velvet-loveseat',     name: 'Velvet Loveseat',         images: ['/rental/rental4.png'], fullPrice: 150, unit: 'item',  maxQty: 1  },
+  { id: 5, key: 'backdrop-stand',      name: 'Backdrop Stand',          images: ['/rental/rental5.png'], fullPrice: 100, unit: 'item',  maxQty: 1  },
+  { id: 6, key: 'cylinder-pedestals',  name: 'Cylinder Pedestals',      images: ['/rental/rental6.png'], fullPrice: 120, unit: 'item',  maxQty: 1  },
+  { id: 7, key: 'gold-geo-stands',     name: 'Gold Geometric Stands',   images: ['/rental/rental7.png'], fullPrice: 150, unit: 'item',  maxQty: 1  },
+  { id: 8, key: 'gold-cocktail-tables',name: 'Gold Cocktail Tables',    images: ['/rental/rental8.png'], fullPrice: 180, unit: 'item',  maxQty: 1  },
+  { id: 9, key: 'white-box-pedestals', name: 'White Box Pedestals',     images: ['/rental/rental9.png'], fullPrice: 120, unit: 'item',  maxQty: 1  },
 ]
 
 const ITEMS = RENTAL_ITEMS
@@ -389,6 +395,12 @@ export function PaymentPanel({ item, onClose }: { item: ExperienceItem; onClose:
 export default function Experience(): React.ReactElement {
   const [lightboxItem, setLightboxItem] = useState<ExperienceItem | null>(null)
   const [payItem,      setPayItem]      = useState<ExperienceItem | null>(null)
+  const [showAll,      setShowAll]      = useState<boolean>(false)
+
+  const ROWS_SHOWN  = 3
+  const COLS        = 3
+  const LIMIT       = ROWS_SHOWN * COLS
+  const visibleItems = showAll ? ITEMS : ITEMS.slice(0, LIMIT)
 
   return (
     <>
@@ -399,8 +411,8 @@ export default function Experience(): React.ReactElement {
           everything you need to bring your vision to life.
         </p>
 
-        <div className="grid grid-cols-2 mob:grid-cols-1 gap-6 max-w-[1000px] mx-auto">
-          {ITEMS.map((item) => (
+        <div className="grid grid-cols-3 tab:grid-cols-2 mob:grid-cols-1 gap-6 max-w-[1000px] mx-auto">
+          {visibleItems.map((item) => (
             <div
               key={item.id}
               className="relative rounded-card overflow-hidden cursor-pointer group"
@@ -436,6 +448,15 @@ export default function Experience(): React.ReactElement {
             </div>
           ))}
         </div>
+
+        {ITEMS.length > LIMIT && (
+          <button
+            onClick={() => setShowAll((p) => !p)}
+            className="mt-10 px-8 py-3 rounded-pill border border-gold text-gold font-semibold text-[14px] bg-transparent cursor-pointer hover:bg-gold hover:text-off-white transition-colors"
+          >
+            {showAll ? 'See Less' : `See More (${ITEMS.length - LIMIT} more)`}
+          </button>
+        )}
       </section>
 
       {lightboxItem && <Lightbox item={lightboxItem} onClose={() => setLightboxItem(null)} />}
