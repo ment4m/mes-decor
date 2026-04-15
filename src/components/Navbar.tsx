@@ -12,7 +12,7 @@ export default function Navbar(): React.ReactElement {
 
       <div
         className="flex items-center gap-2 cursor-pointer"
-        onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+        onClick={() => window.location.href = '/'}
       >
         <img src="/logo.png" alt="Mes Decor logo" className="w-10 h-10 object-contain rounded-full border-2 border-gold" />
         <span className="flex flex-col items-center leading-none">

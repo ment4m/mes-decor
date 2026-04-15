@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { fetchAllBookings, updateBookingStatus, deleteBooking, createBooking, fetchAllReviews, updateReviewStatus, type Booking, type BookingStatus, type Review } from '../lib/airtable'
+import { fetchAllBookings, updateBookingStatus, deleteBooking, createBooking, fetchAllReviews, updateReviewStatus, updateReviewImage, type Booking, type BookingStatus, type Review } from '../lib/airtable'
 import { RENTAL_ITEMS } from './Experience'
 
 const STATUS_COLORS: Record<BookingStatus | 'Completed', string> = {
@@ -46,6 +46,7 @@ export default function Admin(): React.ReactElement {
   const [reviews,        setReviews]        = useState<Review[]>([])
   const [reviewsLoading, setReviewsLoading] = useState(false)
   const [reviewUpdating, setReviewUpdating] = useState<string | null>(null)
+  const [reviewFilter,   setReviewFilter]   = useState<'All' | 'Pending' | 'Approved' | 'Rejected'>('Pending')
 
   const [linkModal,  setLinkModal]  = useState<Booking | null>(null)
   const [linkAmount, setLinkAmount] = useState<string>('')
@@ -55,8 +56,9 @@ export default function Admin(): React.ReactElement {
   // Items tab state
   const [selectedKeys,    setSelectedKeys]    = useState<string[]>([])
   const [itemLinkAmount,  setItemLinkAmount]  = useState<string>('')
-  const [showItemLink,    setShowItemLink]    = useState(false)
-  const [itemLinkCopied,  setItemLinkCopied]  = useState(false)
+  const [showItemLink,      setShowItemLink]      = useState(false)
+  const [itemLinkCopied,    setItemLinkCopied]    = useState(false)
+  const [reviewLinkCopied,  setReviewLinkCopied]  = useState(false)
 
   const toggleItemKey = (key: string): void => {
     setSelectedKeys((prev) => prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key])
@@ -77,6 +79,20 @@ export default function Admin(): React.ReactElement {
     void navigator.clipboard.writeText(buildItemPayLink(itemLinkAmount))
     setItemLinkCopied(true)
     setTimeout(() => setItemLinkCopied(false), 2000)
+  }
+
+  const buildItemReviewLink = (): string => {
+    const base   = window.location.origin
+    const params = new URLSearchParams()
+    const first  = RENTAL_ITEMS.find((r) => r.key === selectedKeys[0])
+    if (first) { params.set('item', first.name); params.set('image', first.images[0]) }
+    return `${base}/review?${params.toString()}`
+  }
+
+  const copyReviewLink = (): void => {
+    void navigator.clipboard.writeText(buildItemReviewLink())
+    setReviewLinkCopied(true)
+    setTimeout(() => setReviewLinkCopied(false), 2000)
   }
 
   const buildPayLink = (b: Booking, amount: string, itemName: string): string => {
@@ -131,11 +147,28 @@ export default function Admin(): React.ReactElement {
       .finally(() => setReviewsLoading(false))
   }, [authed, tab])
 
+  const [reviewError, setReviewError] = useState<string>('')
+
   const handleReviewStatus = async (id: string, status: 'Approved' | 'Rejected'): Promise<void> => {
     setReviewUpdating(id)
-    await updateReviewStatus(id, status)
-    setReviews((prev) => prev.map((r) => r.id === id ? { ...r, status } : r))
-    setReviewUpdating(null)
+    setReviewError('')
+    try {
+      // Airtable only has Pending/Approved — Rejected maps back to Pending
+      const airtableStatus = status === 'Rejected' ? 'Pending' : status
+      await updateReviewStatus(id, airtableStatus)
+      setReviews((prev) => prev.map((r) => r.id === id ? { ...r, status: airtableStatus } : r))
+    } catch (err) {
+      setReviewError((err as Error).message)
+    } finally {
+      setReviewUpdating(null)
+    }
+  }
+
+  const handleReviewImage = async (id: string, image: string): Promise<void> => {
+    try {
+      await updateReviewImage(id, image)
+      setReviews((prev) => prev.map((r) => r.id === id ? { ...r, image } : r))
+    } catch { /* silent */ }
   }
 
   const handleDelete = async (id: string): Promise<void> => {
@@ -219,7 +252,7 @@ export default function Admin(): React.ReactElement {
         <div className="flex gap-2 mb-6">
           <button onClick={() => setTab('bookings')} className={`px-5 py-2 rounded-[10px] text-[13px] font-semibold border transition-colors cursor-pointer ${tab === 'bookings' ? 'bg-dark border-dark text-off-white' : 'bg-white border-border-col text-text-dark hover:border-gold'}`}>Bookings</button>
           <button onClick={() => setTab('reviews')}  className={`px-5 py-2 rounded-[10px] text-[13px] font-semibold border transition-colors cursor-pointer ${tab === 'reviews'  ? 'bg-dark border-dark text-off-white' : 'bg-white border-border-col text-text-dark hover:border-gold'}`}>Reviews</button>
-          <button onClick={() => setTab('items')}    className={`px-5 py-2 rounded-[10px] text-[13px] font-semibold border transition-colors cursor-pointer ${tab === 'items'    ? 'bg-dark border-dark text-off-white' : 'bg-white border-border-col text-text-dark hover:border-gold'}`}>Send Payment</button>
+          <button onClick={() => setTab('items')}    className={`px-5 py-2 rounded-[10px] text-[13px] font-semibold border transition-colors cursor-pointer ${tab === 'items'    ? 'bg-dark border-dark text-off-white' : 'bg-white border-border-col text-text-dark hover:border-gold'}`}>Send Link</button>
         </div>
 
         {/* ── Bookings Tab ── */}
@@ -295,40 +328,95 @@ export default function Admin(): React.ReactElement {
 
         {/* ── Reviews Tab ── */}
         {tab === 'reviews' && (
-          reviewsLoading ? (
-            <div className="text-center py-16 text-text-muted">Loading reviews…</div>
-          ) : reviews.length === 0 ? (
-            <div className="text-center py-16 text-text-muted bg-white rounded-[16px]">No reviews yet.</div>
-          ) : (
-            <div className="flex flex-col gap-3">
-              {reviews.map((r) => (
-                <div key={r.id} className="bg-white rounded-[16px] px-5 py-4 shadow-sm flex flex-wrap items-start gap-4">
-                  <div className="flex gap-0.5 flex-shrink-0 pt-0.5">
-                    {[1,2,3,4,5].map((n) => (
-                      <span key={n} className={`text-lg ${n <= r.rating ? 'text-gold' : 'text-border-col'}`}>★</span>
+          <>
+            {reviewsLoading ? (
+              <div className="text-center py-16 text-text-muted">Loading reviews…</div>
+            ) : (
+              <>
+                {/* Filter pills */}
+                <div className="flex gap-2 mb-4 flex-wrap">
+                  {(['Pending', 'Approved', 'Rejected', 'All'] as const).map((f) => {
+                    const count = f === 'All' ? reviews.length : reviews.filter((r) => (r.status ?? 'Pending') === f).length
+                    return (
+                      <button
+                        key={f}
+                        onClick={() => setReviewFilter(f)}
+                        className={`px-4 py-1.5 rounded-full text-[12px] font-semibold border transition-colors cursor-pointer ${reviewFilter === f ? 'bg-dark border-dark text-off-white' : 'bg-white border-border-col text-text-dark hover:border-gold'}`}
+                      >
+                        {f} ({count})
+                      </button>
+                    )
+                  })}
+                </div>
+
+                {reviewError && (
+                  <div className="bg-red-50 border border-red-200 rounded-[10px] px-4 py-3 text-red-600 text-[13px]">
+                    {reviewError} — check that "Rejected" is a valid option in your Airtable Status field.
+                  </div>
+                )}
+
+                {/* Review cards */}
+                {(reviewFilter === 'All' ? reviews : reviews.filter((r) => (r.status ?? 'Pending') === reviewFilter)).length === 0 ? (
+                  <div className="text-center py-16 text-text-muted bg-white rounded-[16px]">No {reviewFilter.toLowerCase()} reviews.</div>
+                ) : (
+                  <div className="flex flex-col gap-3">
+                    {(reviewFilter === 'All' ? reviews : reviews.filter((r) => (r.status ?? 'Pending') === reviewFilter)).map((r) => (
+                      <div key={r.id} className="bg-white rounded-[16px] shadow-sm border border-border-col overflow-hidden">
+                        {/* Top row */}
+                        <div className="px-5 py-4 flex flex-wrap items-start gap-4">
+                          <div className="flex gap-0.5 flex-shrink-0 pt-0.5">
+                            {[1,2,3,4,5].map((n) => (
+                              <span key={n} className={`text-lg ${n <= r.rating ? 'text-gold' : 'text-border-col'}`}>★</span>
+                            ))}
+                          </div>
+                          <div className="flex-1 min-w-[180px]">
+                            <p className="font-bold text-text-dark text-[14px]">{r.name}</p>
+                            <p className="text-text-muted text-[13px] mt-0.5">"{r.comment}"</p>
+                          </div>
+                          <span className={`px-3 py-1 rounded-full text-[12px] font-bold border flex-shrink-0 ${r.status === 'Approved' ? 'bg-green-100 text-green-800 border-green-300' : r.status === 'Rejected' ? 'bg-red-100 text-red-800 border-red-300' : 'bg-yellow-100 text-yellow-800 border-yellow-300'}`}>
+                            {r.status ?? 'Pending'}
+                          </span>
+                          {r.status !== 'Approved' && (
+                            <button disabled={reviewUpdating === r.id} onClick={() => void handleReviewStatus(r.id, 'Approved')} className="px-3 py-1.5 rounded-[8px] text-[12px] font-semibold border border-green-200 bg-white text-green-600 cursor-pointer hover:bg-green-50 hover:border-green-400 transition-colors disabled:opacity-50 flex-shrink-0">
+                              {reviewUpdating === r.id ? '…' : 'Approve'}
+                            </button>
+                          )}
+                          {r.status !== 'Rejected' && (
+                            <button disabled={reviewUpdating === r.id} onClick={() => void handleReviewStatus(r.id, 'Rejected')} className="px-3 py-1.5 rounded-[8px] text-[12px] font-semibold border border-red-200 bg-white text-red-400 cursor-pointer hover:bg-red-50 hover:border-red-400 transition-colors disabled:opacity-50 flex-shrink-0">
+                              {reviewUpdating === r.id ? '…' : 'Reject'}
+                            </button>
+                          )}
+                        </div>
+                        {/* Image picker */}
+                        <div className="border-t border-border-col px-5 py-3 bg-cream">
+                          <p className="text-[11px] font-bold text-text-muted uppercase tracking-wider mb-2">Select Image to Show With Review</p>
+                          <div className="flex gap-2 flex-wrap">
+                            {RENTAL_ITEMS.map((ri) => (
+                              <button
+                                key={ri.key}
+                                onClick={() => void handleReviewImage(r.id, r.image === ri.images[0] ? '' : ri.images[0])}
+                                className={`rounded-[8px] overflow-hidden border-2 transition-all cursor-pointer p-0 ${r.image === ri.images[0] ? 'border-gold' : 'border-transparent opacity-60 hover:opacity-100'}`}
+                              >
+                                <img src={ri.images[0]} alt={ri.name} className="w-16 h-12 object-cover block" />
+                              </button>
+                            ))}
+                            {r.image && (
+                              <button
+                                onClick={() => void handleReviewImage(r.id, '')}
+                                className="px-3 py-1.5 rounded-[8px] text-[11px] font-semibold border border-border-col bg-white text-text-muted cursor-pointer hover:border-red-300 hover:text-red-400 transition-colors self-center"
+                              >
+                                Remove
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      </div>
                     ))}
                   </div>
-                  <div className="flex-1 min-w-[180px]">
-                    <p className="font-bold text-text-dark text-[14px]">{r.name}</p>
-                    <p className="text-text-muted text-[13px] mt-0.5">"{r.comment}"</p>
-                  </div>
-                  <span className={`px-3 py-1 rounded-full text-[12px] font-bold border flex-shrink-0 ${r.status === 'Approved' ? 'bg-green-100 text-green-800 border-green-300' : r.status === 'Rejected' ? 'bg-red-100 text-red-800 border-red-300' : 'bg-yellow-100 text-yellow-800 border-yellow-300'}`}>
-                    {r.status ?? 'Pending'}
-                  </span>
-                  {r.status !== 'Approved' && (
-                    <button disabled={reviewUpdating === r.id} onClick={() => void handleReviewStatus(r.id, 'Approved')} className="px-3 py-1.5 rounded-[8px] text-[12px] font-semibold border border-green-200 bg-white text-green-600 cursor-pointer hover:bg-green-50 hover:border-green-400 transition-colors disabled:opacity-50 flex-shrink-0">
-                      {reviewUpdating === r.id ? '…' : 'Approve'}
-                    </button>
-                  )}
-                  {r.status !== 'Rejected' && (
-                    <button disabled={reviewUpdating === r.id} onClick={() => void handleReviewStatus(r.id, 'Rejected')} className="px-3 py-1.5 rounded-[8px] text-[12px] font-semibold border border-red-200 bg-white text-red-400 cursor-pointer hover:bg-red-50 hover:border-red-400 transition-colors disabled:opacity-50 flex-shrink-0">
-                      {reviewUpdating === r.id ? '…' : 'Reject'}
-                    </button>
-                  )}
-                </div>
-              ))}
-            </div>
-          )
+                )}
+              </>
+            )}
+          </>
         )}
 
         {/* ── Items / Send Payment Tab ── */}
@@ -432,6 +520,50 @@ export default function Admin(): React.ReactElement {
                 >
                   {showItemLink ? 'Hide preview link' : 'Preview payment page ↗'}
                 </button>
+              </div>
+            )}
+
+            {/* ── Send Review Link ── */}
+            {selectedKeys.length > 0 && (
+              <div className="bg-white rounded-[16px] border border-border-col px-5 py-5 flex flex-col gap-4 shadow-sm">
+                <div className="flex items-center justify-between">
+                  <p className="text-[14px] font-bold text-text-dark">Send Review Link</p>
+                  <span className="text-[12px] text-text-muted">Uses first selected item</span>
+                </div>
+
+                {/* Image preview */}
+                {RENTAL_ITEMS.find((r) => r.key === selectedKeys[0]) && (() => {
+                  const ri = RENTAL_ITEMS.find((r) => r.key === selectedKeys[0])!
+                  return (
+                    <div className="flex items-center gap-3">
+                      <img src={ri.images[0]} alt={ri.name} className="w-16 h-12 object-cover rounded-[8px] border border-border-col flex-shrink-0" />
+                      <p className="text-[13px] font-semibold text-text-dark">{ri.name}</p>
+                    </div>
+                  )
+                })()}
+
+                {/* Link preview */}
+                <div className="bg-cream rounded-[10px] px-3 py-2.5">
+                  <p className="text-[11px] text-text-muted break-all">{buildItemReviewLink()}</p>
+                </div>
+
+                {/* Actions */}
+                <div className="flex gap-2">
+                  <button
+                    onClick={copyReviewLink}
+                    className={`flex-1 py-2.5 rounded-pill font-semibold text-[13px] border-none cursor-pointer transition-colors ${reviewLinkCopied ? 'bg-green-500 text-white' : 'bg-dark text-off-white hover:bg-[#2a1f14]'}`}
+                  >
+                    {reviewLinkCopied ? 'Copied!' : 'Copy Review Link'}
+                  </button>
+                  <a
+                    href={`https://wa.me/?text=${encodeURIComponent(`We'd love your feedback! Leave us a review here: ${buildItemReviewLink()}`)}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="flex-1 py-2.5 rounded-pill font-semibold text-[13px] bg-[#25D366] text-white cursor-pointer hover:bg-[#1ebe5d] transition-colors no-underline text-center"
+                  >
+                    Send via WhatsApp
+                  </a>
+                </div>
               </div>
             )}
 

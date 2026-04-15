@@ -25,8 +25,7 @@ export default function PayPage(): React.ReactElement {
   const [error,        setError]        = useState<string>('')
 
   const depositAmount = Number(depositInput) || 0
-  const maxAmount     = totalParam ?? Infinity
-  const isValid       = depositAmount >= 1 && depositAmount <= maxAmount
+  const isValid       = depositAmount >= 1
 
   const handlePay = async (): Promise<void> => {
     if (!isValid) return
@@ -108,17 +107,13 @@ export default function PayPage(): React.ReactElement {
             <input
               type="number"
               min="1"
-              max={totalParam ?? undefined}
-              placeholder={totalParam ? `Enter amount (max $${totalParam})` : 'Enter amount'}
+              placeholder="Enter amount"
               value={depositInput}
               onChange={(e) => setDepositInput(e.target.value)}
               className="w-full border border-border-col rounded-[10px] pl-7 pr-3 py-2.5 text-[14px] text-text-dark outline-none focus:border-gold bg-white"
               autoFocus
             />
           </div>
-          {depositInput !== '' && depositAmount > maxAmount && (
-            <p className="text-red-500 text-[12px] mt-1">Cannot exceed total of ${totalParam}</p>
-          )}
           {depositInput !== '' && depositAmount < 1 && (
             <p className="text-red-500 text-[12px] mt-1">Amount must be at least $1</p>
           )}

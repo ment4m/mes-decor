@@ -8,7 +8,7 @@ function Stars({ rating, interactive = false, onChange }: {
 }): React.ReactElement {
   const [hovered, setHovered] = useState(0)
   return (
-    <div className="flex gap-1">
+    <div className="flex gap-1 justify-center">
       {[1, 2, 3, 4, 5].map((n) => (
         <button
           key={n}
@@ -26,7 +26,7 @@ function Stars({ rating, interactive = false, onChange }: {
 }
 
 // ── Review Form ────────────────────────────────────────────
-export function ReviewForm(): React.ReactElement {
+export function ReviewForm({ imageOverride }: { imageOverride?: string } = {}): React.ReactElement {
   const [rating,    setRating]    = useState(5)
   const [name,      setName]      = useState('')
   const [anonymous, setAnonymous] = useState(false)
@@ -40,7 +40,7 @@ export function ReviewForm(): React.ReactElement {
     setLoading(true)
     setError(false)
     try {
-      await submitReview({ name: anonymous ? '' : name, rating, comment })
+      await submitReview({ name: anonymous ? '' : name, rating, comment, image: imageOverride })
       setDone(true)
     } catch {
       setError(true)
@@ -59,6 +59,14 @@ export function ReviewForm(): React.ReactElement {
 
   return (
     <div className="w-full max-w-[520px] mx-auto bg-white rounded-[20px] shadow-sm border border-border-col px-6 mob:px-4 py-7 flex flex-col gap-5">
+
+      {/* Item image preview */}
+      {imageOverride && (
+        <div className="rounded-[12px] overflow-hidden border border-border-col -mx-2">
+          <img src={imageOverride} alt="" className="w-full h-[180px] object-cover block" />
+        </div>
+      )}
+
       <div className="flex flex-col items-center text-center">
         <p className="text-[12px] font-bold text-text-muted uppercase tracking-wider mb-2">Your Rating*</p>
         <Stars rating={rating} interactive onChange={setRating} />
@@ -106,10 +114,35 @@ export function ReviewForm(): React.ReactElement {
   )
 }
 
+// ── Review Card ────────────────────────────────────────────
+function ReviewCard({ r }: { r: Review }): React.ReactElement {
+  return (
+    <div className="flex-shrink-0 w-[280px] rounded-card overflow-hidden shadow-sm border border-border-col bg-white flex flex-col">
+      {/* Image */}
+      {r.image ? (
+        <div className="h-[160px] overflow-hidden">
+          <img src={r.image} alt="" className="w-full h-full object-cover block" />
+        </div>
+      ) : (
+        <div className="h-[100px] bg-cream flex items-center justify-center">
+          <span className="text-3xl">🌸</span>
+        </div>
+      )}
+      {/* Content */}
+      <div className="px-5 py-4 flex flex-col gap-2 flex-1">
+        <Stars rating={r.rating} />
+        <p className="text-text-dark text-[13px] leading-relaxed flex-1 text-center">"{r.comment}"</p>
+        <p className="text-gold font-bold text-[13px] text-center">{r.name}</p>
+      </div>
+    </div>
+  )
+}
+
 // ── Reviews Display ────────────────────────────────────────
 export default function Reviews(): React.ReactElement {
   const [reviews, setReviews] = useState<Review[]>([])
   const [loading, setLoading] = useState(true)
+  const [paused,  setPaused]  = useState(false)
 
   useEffect(() => {
     fetchApprovedReviews()
@@ -117,43 +150,56 @@ export default function Reviews(): React.ReactElement {
       .finally(() => setLoading(false))
   }, [])
 
-  return (
-    <section className="bg-cream px-12 tab:px-6 mob:px-4 py-16 tab:py-12 mob:py-10" id="reviews">
-      {/* Display */}
-      <div className="max-w-[1000px] mx-auto mb-16">
-        <h2 className="text-[34px] mob:text-2xl font-bold tracking-tight mb-3 text-text-dark text-center">What Our Clients Say</h2>
-        <p className="text-[14px] text-text-muted leading-relaxed mb-10 text-center">
-          Real experiences from real clients.
-        </p>
+  const track = reviews.length > 0 ? [...reviews, ...reviews] : []
 
-        {loading ? (
-          <p className="text-center text-text-muted py-8">Loading reviews…</p>
-        ) : reviews.length === 0 ? (
-          <p className="text-center text-text-muted py-8">No reviews yet — be the first!</p>
-        ) : (
-          <div className="overflow-x-auto pb-3 -mx-4 px-4" style={{ scrollbarWidth: 'none' }}>
-            <div className="flex gap-4" style={{ width: 'max-content' }}>
-              {reviews.map((r) => (
-                <div key={r.id} className="bg-white rounded-[16px] px-5 py-5 border border-border-col shadow-sm flex flex-col gap-3 w-[280px] flex-shrink-0">
-                  <div className="flex justify-center"><Stars rating={r.rating} /></div>
-                  <p className="text-text-dark text-[14px] leading-relaxed flex-1 text-center">"{r.comment}"</p>
-                  <p className="text-gold font-bold text-[13px] text-center">{r.name}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
+  return (
+    <section className="bg-cream py-16 tab:py-12 mob:py-10 overflow-hidden" id="reviews">
+
+      {/* Header */}
+      <div className="px-12 tab:px-6 mob:px-4 text-center mb-10">
+        <h2 className="text-[34px] mob:text-2xl font-bold tracking-tight mb-3 text-text-dark">What Our Clients Say</h2>
+        <p className="text-[14px] text-text-muted leading-relaxed">Real experiences from real clients.</p>
       </div>
 
+      {/* Marquee */}
+      {loading ? (
+        <p className="text-center text-text-muted py-8">Loading reviews…</p>
+      ) : reviews.length === 0 ? (
+        <p className="text-center text-text-muted py-8">No reviews yet — be the first!</p>
+      ) : (
+        <div
+          className="relative w-full"
+          onMouseEnter={() => setPaused(true)}
+          onMouseLeave={() => setPaused(false)}
+        >
+          {/* Fade edges */}
+          <div className="absolute left-0 top-0 bottom-0 w-20 z-10 pointer-events-none"
+            style={{ background: 'linear-gradient(to right, #F2EDD8, transparent)' }} />
+          <div className="absolute right-0 top-0 bottom-0 w-20 z-10 pointer-events-none"
+            style={{ background: 'linear-gradient(to left, #F2EDD8, transparent)' }} />
+
+          <div
+            className="flex gap-5"
+            style={{
+              animation: `gallery-scroll ${reviews.length * 5}s linear infinite`,
+              animationPlayState: paused ? 'paused' : 'running',
+              width: 'max-content',
+            }}
+          >
+            {track.map((r, i) => (
+              <ReviewCard key={`${r.id}-${i}`} r={r} />
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Divider */}
-      <div className="border-t border-border-col max-w-[1000px] mx-auto mb-16" />
+      <div className="border-t border-border-col max-w-[1000px] mx-auto mt-16 mb-16 px-12 tab:px-6 mob:px-4" />
 
       {/* Submit form */}
-      <div className="max-w-[1000px] mx-auto">
+      <div className="max-w-[1000px] mx-auto px-12 tab:px-6 mob:px-4">
         <h2 className="text-[28px] mob:text-xl font-bold tracking-tight mb-2 text-text-dark text-center">Leave a Review</h2>
-        <p className="text-[14px] text-text-muted mb-8 text-center">
-          Had an event with us? We'd love to hear from you.
-        </p>
+        <p className="text-[14px] text-text-muted mb-8 text-center">Had an event with us? We'd love to hear from you.</p>
         <ReviewForm />
       </div>
     </section>

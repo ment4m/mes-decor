@@ -96,52 +96,68 @@ export interface Review {
   rating:  number
   comment: string
   status?: string
+  image?:  string
+}
+
+function mapReview(r: { id: string; fields: Record<string, string | number> }): Review {
+  return {
+    id:      r.id,
+    name:    (r.fields.Name    as string) || 'Anonymous',
+    rating:  (r.fields.Rating  as number) || 5,
+    comment: (r.fields.Comment as string) || '',
+    status:  (r.fields.Status  as string) || 'Pending',
+    image:   (r.fields.Image   as string) || '',
+  }
 }
 
 export async function fetchApprovedReviews(): Promise<Review[]> {
   const url = `${REVIEWS_URL}?filterByFormula=${encodeURIComponent('{Status}="Approved"')}`
   const res  = await fetch(url, { headers })
   const json = await res.json()
-  return (json.records ?? []).map((r: { id: string; fields: Record<string, string | number> }) => ({
-    id:      r.id,
-    name:    (r.fields.Name as string)    || 'Anonymous',
-    rating:  (r.fields.Rating as number)  || 5,
-    comment: (r.fields.Comment as string) || '',
-  }))
+  return (json.records ?? [])
+    .map(mapReview)
+    .filter((r: Review) => r.status === 'Approved')
 }
 
 export async function fetchAllReviews(): Promise<Review[]> {
   const res  = await fetch(REVIEWS_URL, { headers })
   const json = await res.json()
-  return (json.records ?? []).map((r: { id: string; fields: Record<string, string | number> }) => ({
-    id:      r.id,
-    name:    (r.fields.Name    as string) || 'Anonymous',
-    rating:  (r.fields.Rating  as number) || 5,
-    comment: (r.fields.Comment as string) || '',
-    status:  (r.fields.Status  as string) || 'Pending',
-  }))
+  return (json.records ?? []).map(mapReview)
 }
 
-export async function updateReviewStatus(id: string, status: 'Approved' | 'Rejected'): Promise<void> {
-  await fetch(`${REVIEWS_URL}/${id}`, {
+export async function updateReviewStatus(id: string, status: 'Approved' | 'Rejected' | 'Pending'): Promise<void> {
+  const res = await fetch(`${REVIEWS_URL}/${id}`, {
     method:  'PATCH',
     headers,
     body:    JSON.stringify({ fields: { Status: status } }),
   })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error((err as { error?: { message?: string } }).error?.message ?? `Failed to update status (${res.status})`)
+  }
 }
 
-export async function submitReview(data: { name: string; rating: number; comment: string }): Promise<void> {
+export async function updateReviewImage(id: string, image: string): Promise<void> {
+  const res = await fetch(`${REVIEWS_URL}/${id}`, {
+    method:  'PATCH',
+    headers,
+    body:    JSON.stringify({ fields: { Image: image } }),
+  })
+  if (!res.ok) throw new Error('Failed to save image')
+}
+
+export async function submitReview(data: { name: string; rating: number; comment: string; image?: string }): Promise<void> {
+  const fields: Record<string, string | number> = {
+    Name:    data.name || 'Anonymous',
+    Rating:  data.rating,
+    Comment: data.comment,
+    Status:  'Pending',
+  }
+  if (data.image) fields['Image'] = data.image
   await fetch(REVIEWS_URL, {
     method: 'POST',
     headers,
-    body: JSON.stringify({
-      fields: {
-        Name:    data.name || 'Anonymous',
-        Rating:  data.rating,
-        Comment: data.comment,
-        Status:  'Pending',
-      },
-    }),
+    body: JSON.stringify({ fields }),
   })
 }
 
