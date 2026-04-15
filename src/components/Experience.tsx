@@ -131,16 +131,17 @@ export function PaymentPanel({ item, onClose }: { item: ExperienceItem; onClose:
   const [deliveryInfo, setDeliveryInfo] = useState<{ fee: number; miles: number } | null>(null)
   const [deliveryErr,  setDeliveryErr]  = useState<string>('')
   const [calculating,  setCalculating]  = useState<boolean>(false)
-  const [loading,      setLoading]      = useState<PaymentType | null>(null)
+  const [loading,       setLoading]       = useState<boolean>(false)
+  const [depositInput,  setDepositInput]  = useState<string>('')
 
   const otherItems = ITEMS.filter((i) => i.key !== item.key)
 
   const rentalTotal = item.fullPrice * qty
     + otherItems.reduce((sum, i) => sum + (extras[i.key] ? i.fullPrice * (extras[i.key] as number) : 0), 0)
-  const deliveryFee = deliveryType === 'delivery' && deliveryInfo ? deliveryInfo.fee : 0
-  const grandTotal  = rentalTotal + deliveryFee
-  const deposit     = Math.round(grandTotal * 0.5)
-  const canPay      = deliveryType === 'pickup' || deliveryInfo !== null
+  const deliveryFee   = deliveryType === 'delivery' && deliveryInfo ? deliveryInfo.fee : 0
+  const grandTotal    = rentalTotal + deliveryFee
+  const depositAmount = Math.max(1, Math.min(grandTotal, Number(depositInput) || 0))
+  const canPay        = (deliveryType === 'pickup' || deliveryInfo !== null) && depositAmount > 0 && depositInput !== ''
 
   const toggleExtra = (key: ItemKey, minQ: number): void => {
     setExtras((prev) => {
@@ -166,18 +167,14 @@ export function PaymentPanel({ item, onClose }: { item: ExperienceItem; onClose:
     else setDeliveryInfo(result)
   }
 
-  const pay = async (type: PaymentType): Promise<void> => {
+  const pay = async (): Promise<void> => {
     if (!canPay) return
-    setLoading(type)
+    setLoading(true)
     const lineItems: CheckoutLineItem[] = [
-      { name: item.name, amountCents: item.fullPrice * qty * 100, quantity: 1 },
-      ...otherItems
-        .filter((i) => extras[i.key])
-        .map((i) => ({ name: i.name, amountCents: i.fullPrice * (extras[i.key] as number) * 100, quantity: 1 })),
+      { name: `Deposit – ${item.name}`, amountCents: depositAmount * 100, quantity: 1 },
     ]
-    if (deliveryFee > 0) lineItems.push({ name: 'Delivery Fee', amountCents: deliveryFee * 100, quantity: 1 })
-    await startCheckout(lineItems, type)
-    setLoading(null)
+    await startCheckout(lineItems, 'full')
+    setLoading(false)
   }
 
   const switchDelivery = (type: DeliveryType): void => {
@@ -348,29 +345,38 @@ export function PaymentPanel({ item, onClose }: { item: ExperienceItem; onClose:
               <span className="font-bold text-text-dark">Total</span>
               <span className="font-bold text-text-dark">${grandTotal}</span>
             </div>
-            <div className="flex justify-between text-[13px] text-text-muted">
-              <span>50% deposit</span>
-              <span>${deposit}</span>
-            </div>
           </div>
 
-          {/* Payment buttons */}
-          <div className="flex flex-col gap-3">
-            <button
-              className="w-full py-3 rounded-pill bg-gold text-off-white font-semibold text-[14px] border-none cursor-pointer hover:bg-gold-dark transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
-              disabled={loading !== null || !canPay}
-              onClick={() => void pay('full')}
-            >
-              {loading === 'full' ? 'Redirecting…' : `Pay in Full  $${grandTotal}`}
-            </button>
-            <button
-              className="w-full py-3 rounded-pill bg-white border border-gold text-gold font-semibold text-[14px] cursor-pointer hover:bg-gold hover:text-off-white transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
-              disabled={loading !== null || !canPay}
-              onClick={() => void pay('deposit')}
-            >
-              {loading === 'deposit' ? 'Redirecting…' : `Pay Deposit  $${deposit}`}
-            </button>
+          {/* Deposit amount input */}
+          <div>
+            <label className="text-[12px] font-bold text-text-muted uppercase tracking-wider block mb-2">
+              Deposit Amount ($)
+            </label>
+            <div className="relative">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted font-semibold text-[14px]">$</span>
+              <input
+                type="number"
+                min="1"
+                max={grandTotal}
+                placeholder={`Enter amount (max $${grandTotal})`}
+                value={depositInput}
+                onChange={(e) => setDepositInput(e.target.value)}
+                className="w-full border border-border-col rounded-[10px] pl-7 pr-3 py-2.5 text-[14px] text-text-dark outline-none focus:border-gold bg-white"
+              />
+            </div>
+            {depositInput !== '' && depositAmount > grandTotal && (
+              <p className="text-red-500 text-[12px] mt-1">Cannot exceed total of ${grandTotal}</p>
+            )}
           </div>
+
+          {/* Pay Deposit button */}
+          <button
+            className="w-full py-3 rounded-pill bg-gold text-off-white font-semibold text-[14px] border-none cursor-pointer hover:bg-gold-dark transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
+            disabled={loading || !canPay}
+            onClick={() => void pay()}
+          >
+            {loading ? 'Redirecting…' : `Pay Deposit  $${depositAmount || ''}`}
+          </button>
 
           <p className="text-[11px] text-text-muted text-center">Secure payment powered by Stripe</p>
         </div>
