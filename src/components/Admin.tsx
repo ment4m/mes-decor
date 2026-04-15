@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { fetchAllBookings, updateBookingStatus, deleteBooking, createBooking, fetchAllReviews, updateReviewStatus, type Booking, type BookingStatus, type Review } from '../lib/airtable'
+import { RENTAL_ITEMS } from './Experience'
 
 const STATUS_COLORS: Record<BookingStatus | 'Completed', string> = {
   Pending:   'bg-yellow-100 text-yellow-800 border-yellow-300',
@@ -31,7 +32,7 @@ export default function Admin(): React.ReactElement {
   const [password, setPassword] = useState('')
   const [pwError,  setPwError]  = useState(false)
 
-  const [tab,       setTab]       = useState<'bookings' | 'reviews'>('bookings')
+  const [tab,       setTab]       = useState<'bookings' | 'reviews' | 'items'>('bookings')
 
   const [bookings,  setBookings]  = useState<Booking[]>([])
   const [loading,   setLoading]   = useState(false)
@@ -45,6 +46,53 @@ export default function Admin(): React.ReactElement {
   const [reviews,        setReviews]        = useState<Review[]>([])
   const [reviewsLoading, setReviewsLoading] = useState(false)
   const [reviewUpdating, setReviewUpdating] = useState<string | null>(null)
+
+  const [linkModal,  setLinkModal]  = useState<Booking | null>(null)
+  const [linkAmount, setLinkAmount] = useState<string>('')
+  const [linkItem,   setLinkItem]   = useState<string>('')
+  const [linkCopied, setLinkCopied] = useState(false)
+
+  // Items tab state
+  const [selectedKeys,    setSelectedKeys]    = useState<string[]>([])
+  const [itemLinkAmount,  setItemLinkAmount]  = useState<string>('')
+  const [showItemLink,    setShowItemLink]    = useState(false)
+  const [itemLinkCopied,  setItemLinkCopied]  = useState(false)
+
+  const toggleItemKey = (key: string): void => {
+    setSelectedKeys((prev) => prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key])
+  }
+
+  const buildItemPayLink = (amount: string): string => {
+    const base   = window.location.origin
+    const params = new URLSearchParams()
+    selectedKeys.forEach((key) => {
+      const ri = RENTAL_ITEMS.find((r) => r.key === key)
+      if (ri) { params.append('item', ri.name); params.append('image', ri.images[0]) }
+    })
+    if (amount) params.set('total', amount)
+    return `${base}/pay?${params.toString()}`
+  }
+
+  const copyItemLink = (): void => {
+    void navigator.clipboard.writeText(buildItemPayLink(itemLinkAmount))
+    setItemLinkCopied(true)
+    setTimeout(() => setItemLinkCopied(false), 2000)
+  }
+
+  const buildPayLink = (b: Booking, amount: string, itemName: string): string => {
+    const base      = window.location.origin
+    const params    = new URLSearchParams({ item: itemName || b.service })
+    if (amount) params.set('total', amount)
+    const matched = RENTAL_ITEMS.find((r) => r.name === itemName)
+    if (matched) params.set('image', matched.images[0])
+    return `${base}/pay?${params.toString()}`
+  }
+
+  const copyLink = (b: Booking): void => {
+    void navigator.clipboard.writeText(buildPayLink(b, linkAmount, linkItem))
+    setLinkCopied(true)
+    setTimeout(() => setLinkCopied(false), 2000)
+  }
 
   const handleAdd = async (): Promise<void> => {
     if (!addForm.name || !addForm.phone || !addForm.serviceType || !addForm.date) return
@@ -170,7 +218,8 @@ export default function Admin(): React.ReactElement {
         {/* Tabs */}
         <div className="flex gap-2 mb-6">
           <button onClick={() => setTab('bookings')} className={`px-5 py-2 rounded-[10px] text-[13px] font-semibold border transition-colors cursor-pointer ${tab === 'bookings' ? 'bg-dark border-dark text-off-white' : 'bg-white border-border-col text-text-dark hover:border-gold'}`}>Bookings</button>
-          <button onClick={() => setTab('reviews')} className={`px-5 py-2 rounded-[10px] text-[13px] font-semibold border transition-colors cursor-pointer ${tab === 'reviews' ? 'bg-dark border-dark text-off-white' : 'bg-white border-border-col text-text-dark hover:border-gold'}`}>Reviews</button>
+          <button onClick={() => setTab('reviews')}  className={`px-5 py-2 rounded-[10px] text-[13px] font-semibold border transition-colors cursor-pointer ${tab === 'reviews'  ? 'bg-dark border-dark text-off-white' : 'bg-white border-border-col text-text-dark hover:border-gold'}`}>Reviews</button>
+          <button onClick={() => setTab('items')}    className={`px-5 py-2 rounded-[10px] text-[13px] font-semibold border transition-colors cursor-pointer ${tab === 'items'    ? 'bg-dark border-dark text-off-white' : 'bg-white border-border-col text-text-dark hover:border-gold'}`}>Send Payment</button>
         </div>
 
         {/* ── Bookings Tab ── */}
@@ -221,6 +270,13 @@ export default function Admin(): React.ReactElement {
                     {b.date && !isDatePassed(b.date) && (
                       <a href={calendarUrl(b)} target="_blank" rel="noreferrer" className="px-3 py-1.5 rounded-[8px] text-[12px] font-semibold border border-blue-200 bg-white text-blue-500 cursor-pointer hover:bg-blue-50 hover:border-blue-400 transition-colors no-underline whitespace-nowrap">+ Calendar</a>
                     )}
+                    <button
+                      onClick={() => { setLinkModal(b); setLinkAmount(''); setLinkItem(''); setLinkCopied(false) }}
+                      className="px-3 py-1.5 rounded-[8px] text-[12px] font-semibold border border-gold bg-white text-gold cursor-pointer hover:bg-gold hover:text-off-white transition-colors whitespace-nowrap"
+                    >
+                      Send Link
+                    </button>
+
                     {confirmDel === b.id ? (
                       <div className="flex gap-2 items-center">
                         <span className="text-[12px] text-red-500 font-semibold">Delete?</span>
@@ -275,7 +331,193 @@ export default function Admin(): React.ReactElement {
           )
         )}
 
+        {/* ── Items / Send Payment Tab ── */}
+        {tab === 'items' && (
+          <div className="flex flex-col gap-6">
+
+            {/* Item grid */}
+            <div>
+              <p className="text-[13px] text-text-muted mb-4">Select one or more items to include in the payment link. Click an item to select or deselect it.</p>
+              <div className="grid grid-cols-3 mob:grid-cols-1 gap-4">
+                {RENTAL_ITEMS.map((ri) => {
+                  const selected = selectedKeys.includes(ri.key)
+                  return (
+                    <button
+                      key={ri.key}
+                      onClick={() => toggleItemKey(ri.key)}
+                      className={`rounded-[16px] overflow-hidden border-2 transition-all cursor-pointer p-0 text-left shadow-sm ${selected ? 'border-gold' : 'border-transparent hover:border-gold/40'}`}
+                    >
+                      <div className="relative">
+                        <img src={ri.images[0]} alt={ri.name} className="w-full h-[160px] object-cover block" />
+                        {selected && (
+                          <div className="absolute top-2 right-2 w-6 h-6 rounded-full bg-gold flex items-center justify-center">
+                            <span className="text-white text-[12px] font-bold">✓</span>
+                          </div>
+                        )}
+                      </div>
+                      <div className={`px-3 py-2.5 ${selected ? 'bg-gold' : 'bg-white'}`}>
+                        <p className={`text-[13px] font-bold ${selected ? 'text-off-white' : 'text-text-dark'}`}>{ri.name}</p>
+                        <p className={`text-[12px] ${selected ? 'text-white/80' : 'text-text-muted'}`}>
+                          {ri.unit === 'chair' ? `$${ri.fullPrice}/chair` : `$${ri.fullPrice}`}
+                        </p>
+                      </div>
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+
+            {/* Link builder — only shown when items selected */}
+            {selectedKeys.length > 0 && (
+              <div className="bg-white rounded-[16px] border border-border-col px-5 py-5 flex flex-col gap-4 shadow-sm">
+                <div className="flex items-center justify-between">
+                  <p className="text-[14px] font-bold text-text-dark">Generate Payment Link</p>
+                  <span className="text-[12px] text-gold font-semibold">{selectedKeys.length} item{selectedKeys.length > 1 ? 's' : ''} selected</span>
+                </div>
+
+                {/* Total amount */}
+                <div>
+                  <label className="text-[12px] font-bold text-text-muted uppercase tracking-wider block mb-1.5">Total Amount (optional)</label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted font-semibold text-[14px]">$</span>
+                    <input
+                      type="number"
+                      min="1"
+                      placeholder="e.g. 300"
+                      value={itemLinkAmount}
+                      onChange={(e) => setItemLinkAmount(e.target.value)}
+                      className="w-full border border-border-col rounded-[10px] pl-7 pr-3 py-2.5 text-[13px] text-text-dark outline-none focus:border-gold bg-white"
+                    />
+                  </div>
+                  <p className="text-[11px] text-text-muted mt-1">Customer cannot exceed this amount. Leave blank for any amount.</p>
+                </div>
+
+                {/* Link preview */}
+                <div className="bg-cream rounded-[10px] px-3 py-2.5">
+                  <p className="text-[11px] text-text-muted break-all">{buildItemPayLink(itemLinkAmount)}</p>
+                </div>
+
+                {/* Actions */}
+                <div className="flex gap-2">
+                  <button
+                    onClick={copyItemLink}
+                    className={`flex-1 py-2.5 rounded-pill font-semibold text-[13px] border-none cursor-pointer transition-colors ${itemLinkCopied ? 'bg-green-500 text-white' : 'bg-gold text-off-white hover:bg-gold-dark'}`}
+                  >
+                    {itemLinkCopied ? 'Copied!' : 'Copy Link'}
+                  </button>
+                  <a
+                    href={`https://wa.me/?text=${encodeURIComponent(`Here is your payment link: ${buildItemPayLink(itemLinkAmount)}`)}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="flex-1 py-2.5 rounded-pill font-semibold text-[13px] bg-[#25D366] text-white cursor-pointer hover:bg-[#1ebe5d] transition-colors no-underline text-center"
+                  >
+                    Send via WhatsApp
+                  </a>
+                </div>
+
+                {/* Show ItemLink modal toggle */}
+                {showItemLink && (
+                  <a
+                    href={buildItemPayLink(itemLinkAmount)}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-[12px] text-gold underline text-center"
+                  >
+                    Preview payment page ↗
+                  </a>
+                )}
+                <button
+                  onClick={() => setShowItemLink(!showItemLink)}
+                  className="text-[12px] text-gold underline bg-transparent border-none cursor-pointer p-0 text-center"
+                >
+                  {showItemLink ? 'Hide preview link' : 'Preview payment page ↗'}
+                </button>
+              </div>
+            )}
+
+          </div>
+        )}
+
       </div>
+
+      {/* Send Payment Link Modal */}
+      {linkModal && (
+        <div className="fixed inset-0 bg-[rgba(20,12,4,0.75)] backdrop-blur-sm z-[500] flex items-center justify-center p-4" onClick={() => setLinkModal(null)}>
+          <div className="bg-off-white rounded-[20px] w-full max-w-[400px] overflow-hidden shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <div className="bg-dark px-6 py-5 flex items-center justify-between">
+              <h3 className="text-off-white font-bold text-[17px]">Send Payment Link</h3>
+              <button className="bg-white/10 border-none text-off-white w-8 h-8 rounded-full cursor-pointer flex items-center justify-center hover:bg-white/20 transition-colors" onClick={() => setLinkModal(null)}>✕</button>
+            </div>
+            <div className="px-6 py-6 flex flex-col gap-4">
+
+              {/* Customer info */}
+              <div className="bg-cream rounded-[12px] px-4 py-3 flex flex-col gap-1">
+                <p className="text-[12px] text-text-muted font-semibold uppercase tracking-wider">Customer</p>
+                <p className="text-[14px] font-bold text-text-dark">{linkModal.name}</p>
+                <p className="text-[13px] text-text-muted">{linkModal.service}</p>
+              </div>
+
+              {/* Item picker */}
+              <div>
+                <label className="text-[12px] font-bold text-text-muted uppercase tracking-wider block mb-2">Select Item</label>
+                <div className="grid grid-cols-3 gap-2">
+                  {RENTAL_ITEMS.map((ri) => (
+                    <button
+                      key={ri.key}
+                      onClick={() => setLinkItem(linkItem === ri.name ? '' : ri.name)}
+                      className={`rounded-[12px] overflow-hidden border-2 transition-all cursor-pointer p-0 text-left ${linkItem === ri.name ? 'border-gold' : 'border-transparent'}`}
+                    >
+                      <img src={ri.images[0]} alt={ri.name} className="w-full h-16 object-cover block" />
+                      <p className={`text-[11px] font-semibold px-2 py-1.5 leading-tight ${linkItem === ri.name ? 'bg-gold text-off-white' : 'bg-white text-text-dark'}`}>{ri.name}</p>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Total amount */}
+              <div>
+                <label className="text-[12px] font-bold text-text-muted uppercase tracking-wider block mb-1.5">Total Amount (optional)</label>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted font-semibold text-[14px]">$</span>
+                  <input
+                    type="number"
+                    min="1"
+                    placeholder="e.g. 300"
+                    value={linkAmount}
+                    onChange={(e) => setLinkAmount(e.target.value)}
+                    className="w-full border border-border-col rounded-[10px] pl-7 pr-3 py-2.5 text-[14px] text-text-dark outline-none focus:border-gold bg-white"
+                  />
+                </div>
+                <p className="text-[11px] text-text-muted mt-1">Customer cannot pay more than this. Leave blank for any amount.</p>
+              </div>
+
+              {/* Link preview */}
+              <div className="bg-cream rounded-[10px] px-3 py-2.5">
+                <p className="text-[11px] text-text-muted break-all">{buildPayLink(linkModal, linkAmount, linkItem)}</p>
+              </div>
+
+              {/* Actions */}
+              <div className="flex gap-2">
+                <button
+                  onClick={() => copyLink(linkModal)}
+                  className={`flex-1 py-2.5 rounded-pill font-semibold text-[13px] border-none cursor-pointer transition-colors ${linkCopied ? 'bg-green-500 text-white' : 'bg-gold text-off-white hover:bg-gold-dark'}`}
+                >
+                  {linkCopied ? 'Copied!' : 'Copy Link'}
+                </button>
+                <a
+                  href={`https://wa.me/${linkModal.phone.replace(/\D/g, '')}?text=${encodeURIComponent(`Hi ${linkModal.name}, here is your payment link: ${buildPayLink(linkModal, linkAmount, linkItem)}`)}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="flex-1 py-2.5 rounded-pill font-semibold text-[13px] bg-[#25D366] text-white cursor-pointer hover:bg-[#1ebe5d] transition-colors no-underline text-center"
+                >
+                  Send via WhatsApp
+                </a>
+              </div>
+
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Add Booking Modal */}
       {showAdd && (
