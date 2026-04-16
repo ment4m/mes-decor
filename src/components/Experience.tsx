@@ -223,49 +223,58 @@ export function PaymentPanel({ item, onClose }: { item: ExperienceItem; onClose:
             </div>
           )}
 
-          {/* Add another item */}
+          {/* Add another item — dropdown */}
           {otherItems.length > 0 && (
             <div>
               <label className="text-[12px] font-bold text-text-muted uppercase tracking-wider block mb-2">Add Another Item</label>
-              <div className="flex flex-col gap-2">
-                {otherItems.map((oi) => {
-                  const checked = Boolean(extras[oi.key])
-                  const oiMin   = oi.minQty ?? 1
-                  return (
-                    <div key={oi.key} className="bg-white border border-border-col rounded-[12px] px-4 py-3">
-                      <div className="flex items-center justify-between gap-3">
-                        <label className="flex items-center gap-2.5 cursor-pointer flex-1">
-                          <input
-                            type="checkbox"
-                            checked={checked}
-                            onChange={() => toggleExtra(oi.key, oiMin)}
-                            className="accent-gold w-4 h-4 cursor-pointer"
-                          />
-                          <div>
-                            <p className="text-[13px] font-semibold text-text-dark">{oi.name}</p>
-                            <p className="text-[12px] text-text-muted">
-                              {oi.unit === 'chair' ? `$${oi.fullPrice}/chair` : `$${oi.fullPrice}`}
-                            </p>
-                          </div>
-                        </label>
-                        {checked && oi.unit === 'chair' && (
+
+              {/* Dropdown to pick an item */}
+              <select
+                defaultValue=""
+                onChange={(e) => {
+                  const key = e.target.value as ItemKey
+                  if (!key) return
+                  const oi = otherItems.find((o) => o.key === key)
+                  if (oi && !extras[key]) toggleExtra(key, oi.minQty ?? 1)
+                  e.target.value = ''
+                }}
+                className="w-full border border-border-col rounded-[10px] px-3 py-2.5 text-[14px] text-text-dark bg-white outline-none focus:border-gold cursor-pointer"
+              >
+                <option value="" disabled>Select an item…</option>
+                {otherItems.filter((oi) => !extras[oi.key]).map((oi) => (
+                  <option key={oi.key} value={oi.key}>
+                    {oi.name} — {oi.unit === 'chair' ? `$${oi.fullPrice}/chair` : `$${oi.fullPrice}`}
+                  </option>
+                ))}
+              </select>
+
+              {/* Selected extras */}
+              {otherItems.filter((oi) => extras[oi.key]).length > 0 && (
+                <div className="flex flex-col gap-2 mt-2">
+                  {otherItems.filter((oi) => extras[oi.key]).map((oi) => {
+                    const oiMin = oi.minQty ?? 1
+                    return (
+                      <div key={oi.key} className="bg-white border border-border-col rounded-[12px] px-4 py-3 flex items-center justify-between gap-3">
+                        <div className="flex-1">
+                          <p className="text-[13px] font-semibold text-text-dark">{oi.name}</p>
+                          <p className="text-[12px] text-text-muted">{oi.unit === 'chair' ? `$${oi.fullPrice}/chair` : `$${oi.fullPrice}`}</p>
+                        </div>
+                        {oi.unit === 'chair' && (
                           <div className="flex items-center gap-2 flex-shrink-0">
-                            <button
-                              className="w-7 h-7 rounded-full border border-border-col bg-white flex items-center justify-center text-sm font-bold text-text-dark cursor-pointer hover:border-gold hover:text-gold transition-colors"
-                              onClick={() => setExtraQty(oi.key, (extras[oi.key] ?? oiMin) - 1, oi.maxQty, oiMin)}
-                            >−</button>
+                            <button className="w-7 h-7 rounded-full border border-border-col bg-white flex items-center justify-center text-sm font-bold text-text-dark cursor-pointer hover:border-gold hover:text-gold transition-colors" onClick={() => setExtraQty(oi.key, (extras[oi.key] ?? oiMin) - 1, oi.maxQty, oiMin)}>−</button>
                             <span className="text-[14px] font-bold text-text-dark w-6 text-center">{extras[oi.key]}</span>
-                            <button
-                              className="w-7 h-7 rounded-full border border-border-col bg-white flex items-center justify-center text-sm font-bold text-text-dark cursor-pointer hover:border-gold hover:text-gold transition-colors"
-                              onClick={() => setExtraQty(oi.key, (extras[oi.key] ?? oiMin) + 1, oi.maxQty, oiMin)}
-                            >+</button>
+                            <button className="w-7 h-7 rounded-full border border-border-col bg-white flex items-center justify-center text-sm font-bold text-text-dark cursor-pointer hover:border-gold hover:text-gold transition-colors" onClick={() => setExtraQty(oi.key, (extras[oi.key] ?? oiMin) + 1, oi.maxQty, oiMin)}>+</button>
                           </div>
                         )}
+                        <button
+                          onClick={() => toggleExtra(oi.key, oiMin)}
+                          className="text-text-muted hover:text-red-400 transition-colors bg-transparent border-none cursor-pointer text-[18px] leading-none flex-shrink-0"
+                        >×</button>
                       </div>
-                    </div>
-                  )
-                })}
-              </div>
+                    )
+                  })}
+                </div>
+              )}
             </div>
           )}
 

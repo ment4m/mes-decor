@@ -27,7 +27,7 @@ function Stars({ rating, interactive = false, onChange }: {
 
 // ── Review Form ────────────────────────────────────────────
 export function ReviewForm({ imageOverride }: { imageOverride?: string } = {}): React.ReactElement {
-  const [rating,    setRating]    = useState(5)
+  const [rating,    setRating]    = useState(0)
   const [name,      setName]      = useState('')
   const [anonymous, setAnonymous] = useState(false)
   const [comment,   setComment]   = useState('')
@@ -36,7 +36,6 @@ export function ReviewForm({ imageOverride }: { imageOverride?: string } = {}): 
   const [error,     setError]     = useState(false)
 
   const handleSubmit = async (): Promise<void> => {
-    if (!comment.trim()) return
     setLoading(true)
     setError(false)
     try {
@@ -68,7 +67,7 @@ export function ReviewForm({ imageOverride }: { imageOverride?: string } = {}): 
       )}
 
       <div className="flex flex-col items-center text-center">
-        <p className="text-[12px] font-bold text-text-muted uppercase tracking-wider mb-2">Your Rating*</p>
+        <p className="text-[12px] font-bold text-text-muted uppercase tracking-wider mb-2">Your Rating</p>
         <Stars rating={rating} interactive onChange={setRating} />
       </div>
 
@@ -91,7 +90,7 @@ export function ReviewForm({ imageOverride }: { imageOverride?: string } = {}): 
       </div>
 
       <div>
-        <p className="text-[12px] font-bold text-text-muted uppercase tracking-wider mb-2">Your Comment*</p>
+        <p className="text-[12px] font-bold text-text-muted uppercase tracking-wider mb-2">Your Comment</p>
         <textarea
           placeholder="Share your experience…"
           value={comment}
@@ -105,7 +104,7 @@ export function ReviewForm({ imageOverride }: { imageOverride?: string } = {}): 
 
       <button
         onClick={() => void handleSubmit()}
-        disabled={loading || !comment.trim()}
+        disabled={loading || rating === 0}
         className="w-full py-3 rounded-pill bg-gold text-off-white font-semibold text-[14px] border-none cursor-pointer hover:bg-gold-dark transition-colors disabled:opacity-50"
       >
         {loading ? 'Submitting…' : 'Submit Review'}

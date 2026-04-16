@@ -12,6 +12,10 @@ interface LineItem {
 interface CheckoutBody {
   items:       LineItem[]
   paymentType: 'full' | 'deposit'
+  date?:       string
+  time?:       string
+  location?:   string
+  clientName?: string
 }
 
 export const handler: Handler = async (event) => {
@@ -20,7 +24,7 @@ export const handler: Handler = async (event) => {
   }
 
   try {
-    const { items, paymentType }: CheckoutBody = JSON.parse(event.body ?? '{}')
+    const { items, paymentType, date, time, location, clientName }: CheckoutBody = JSON.parse(event.body ?? '{}')
     if (!items?.length) return { statusCode: 400, body: 'Invalid request' }
 
     const isDeposit = paymentType === 'deposit'
@@ -36,11 +40,20 @@ export const handler: Handler = async (event) => {
       quantity: i.quantity,
     }))
 
+    // Build success URL with event details so the confirmation page can show them
+    const successParams = new URLSearchParams()
+    if (date)       successParams.set('date',     date)
+    if (time)       successParams.set('time',     time)
+    if (location)   successParams.set('location', location)
+    if (clientName) successParams.set('name',     clientName)
+    items.forEach((i) => successParams.append('item', i.name))
+
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ['card'],
       line_items:   lineItems,
       mode:         'payment',
-      success_url:  `${event.headers.origin}/payment-success`,
+      metadata:     { date: date ?? '', time: time ?? '', location: location ?? '', clientName: clientName ?? '', items: items.map((i) => i.name).join(', ') },
+      success_url:  `${event.headers.origin}/payment-success?${successParams.toString()}`,
       cancel_url:   `${event.headers.origin}/#rentals`,
     })
 

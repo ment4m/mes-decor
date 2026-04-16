@@ -1,12 +1,23 @@
 import React, { useState } from 'react'
 
-async function startCheckout(amountCents: number, label: string): Promise<void> {
+async function startCheckout(
+  amountCents: number,
+  label:       string,
+  date:        string,
+  time:        string,
+  location:    string,
+  clientName:  string,
+): Promise<void> {
   const res  = await fetch('/.netlify/functions/create-checkout', {
     method:  'POST',
     headers: { 'Content-Type': 'application/json' },
     body:    JSON.stringify({
       items:       [{ name: label, amountCents, quantity: 1 }],
       paymentType: 'full',
+      date,
+      time,
+      location,
+      clientName,
     }),
   })
   const data = await res.json()
@@ -15,32 +26,37 @@ async function startCheckout(amountCents: number, label: string): Promise<void> 
 
 export default function PayPage(): React.ReactElement {
   const params     = new URLSearchParams(window.location.search)
-  const items      = params.getAll('item')    // one or more item names
-  const images     = params.getAll('image')   // matching images
+  const items      = params.getAll('item')
+  const images     = params.getAll('image')
   const totalParam = params.get('total') ? Number(params.get('total')) : null
   const noteParam  = params.get('note')  ?? ''
 
+  // Pre-fill from link if admin included them
   const [depositInput, setDepositInput] = useState<string>('')
+  const [clientName,   setClientName]   = useState<string>('')
+  const [date,         setDate]         = useState<string>(params.get('date') ?? '')
+  const [time,         setTime]         = useState<string>(params.get('time') ?? '')
+  const [location,     setLocation]     = useState<string>(params.get('location') ?? '')
   const [loading,      setLoading]      = useState<boolean>(false)
   const [error,        setError]        = useState<string>('')
 
   const depositAmount = Number(depositInput) || 0
-  const isValid       = depositAmount >= 1
+  const isValid       = depositAmount >= 1 && date.trim() !== '' && time.trim() !== '' && location.trim() !== ''
 
   const handlePay = async (): Promise<void> => {
     if (!isValid) return
     setLoading(true)
     setError('')
     try {
-      const label = items.length > 0
-        ? `Deposit – ${items.join(', ')}`
-        : 'Deposit'
-      await startCheckout(Math.round(depositAmount * 100), label)
+      const label = `Mes Decor – ${clientName || items.join(', ') || 'Deposit'}`
+      await startCheckout(Math.round(depositAmount * 100), label, date, time, location, clientName)
     } catch {
       setError('Something went wrong. Please try again.')
       setLoading(false)
     }
   }
+
+  const inputClass = 'w-full border border-border-col rounded-[10px] px-3 py-2.5 text-[14px] text-text-dark outline-none focus:border-gold bg-white transition-colors'
 
   return (
     <div className="min-h-screen bg-cream flex flex-col items-center justify-center px-4 mob:px-3 py-12">
@@ -51,7 +67,7 @@ export default function PayPage(): React.ReactElement {
           src="/logo.png"
           alt="Mes Decor"
           className="w-14 h-14 rounded-full border-2 border-gold mx-auto mb-3 cursor-pointer"
-          onClick={() => window.location.href = '/'}
+          onClick={() => { window.location.href = '/' }}
         />
         <h1 className="text-[26px] mob:text-[22px] font-bold text-text-dark">Pay Deposit</h1>
         <p className="text-text-muted text-[14px] mt-1">Secure payment powered by Stripe</p>
@@ -97,7 +113,59 @@ export default function PayPage(): React.ReactElement {
           </div>
         )}
 
-        {/* Deposit amount input */}
+        {/* Event details */}
+        <div className="flex flex-col gap-3">
+          <p className="text-[12px] font-bold text-text-muted uppercase tracking-wider">Event Details</p>
+
+          <div>
+            <label className="text-[12px] text-text-muted block mb-1">Your Name</label>
+            <input
+              type="text"
+              placeholder="Full name"
+              value={clientName}
+              onChange={(e) => setClientName(e.target.value)}
+              className={inputClass}
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-[12px] text-text-muted block mb-1">Date *</label>
+              <input
+                type="date"
+                value={date}
+                min={new Date().toISOString().split('T')[0]}
+                onChange={(e) => setDate(e.target.value)}
+                className={inputClass}
+              />
+            </div>
+            <div>
+              <label className="text-[12px] text-text-muted block mb-1">Time *</label>
+              <input
+                type="time"
+                value={time}
+                min={date === new Date().toISOString().split('T')[0]
+                  ? `${String(new Date().getHours()).padStart(2,'0')}:${String(new Date().getMinutes()).padStart(2,'0')}`
+                  : undefined}
+                onChange={(e) => setTime(e.target.value)}
+                className={inputClass}
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="text-[12px] text-text-muted block mb-1">Location / Address *</label>
+            <input
+              type="text"
+              placeholder="Venue name or address"
+              value={location}
+              onChange={(e) => setLocation(e.target.value)}
+              className={inputClass}
+            />
+          </div>
+        </div>
+
+        {/* Deposit amount */}
         <div>
           <label className="text-[12px] font-bold text-text-muted uppercase tracking-wider block mb-2">
             Deposit Amount ($)
@@ -111,7 +179,6 @@ export default function PayPage(): React.ReactElement {
               value={depositInput}
               onChange={(e) => setDepositInput(e.target.value)}
               className="w-full border border-border-col rounded-[10px] pl-7 pr-3 py-2.5 text-[14px] text-text-dark outline-none focus:border-gold bg-white"
-              autoFocus
             />
           </div>
           {depositInput !== '' && depositAmount < 1 && (
@@ -126,8 +193,12 @@ export default function PayPage(): React.ReactElement {
           disabled={loading || !isValid || depositInput === ''}
           className="w-full py-3 rounded-pill bg-gold text-off-white font-semibold text-[14px] border-none cursor-pointer hover:bg-gold-dark transition-colors disabled:opacity-50"
         >
-          {loading ? 'Redirecting…' : `Pay Deposit  $${depositAmount > 0 ? depositAmount : ''}`}
+          {loading ? 'Redirecting…' : `Pay Deposit${depositAmount > 0 ? `  $${depositAmount}` : ''}`}
         </button>
+
+        {(!date || !time || !location) && depositInput !== '' && (
+          <p className="text-[12px] text-text-muted text-center">Please fill in date, time, and location to continue.</p>
+        )}
 
         <p className="text-[11px] text-text-muted text-center">
           Your payment is processed securely by Stripe.<br />
