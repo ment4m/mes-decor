@@ -5,6 +5,32 @@ const stripe        = new Stripe(process.env.STRIPE_SECRET_KEY as string)
 const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET as string
 const resendKey     = process.env.RESEND_API_KEY as string
 const adminEmail    = process.env.ADMIN_EMAIL as string
+const airtableToken = process.env.VITE_AIRTABLE_TOKEN as string
+const airtableBase  = process.env.VITE_AIRTABLE_BASE_ID as string
+const airtableTable = process.env.VITE_AIRTABLE_TABLE_ID as string
+
+async function createAirtableBooking(
+  name: string, items: string, date: string, time: string, location: string, amount: string
+): Promise<void> {
+  await fetch(`https://api.airtable.com/v0/${airtableBase}/${airtableTable}`, {
+    method:  'POST',
+    headers: {
+      'Authorization': `Bearer ${airtableToken}`,
+      'Content-Type':  'application/json',
+    },
+    body: JSON.stringify({
+      fields: {
+        Name:    name || 'Via Pay Link',
+        Phone:   '',
+        Service: items,
+        Date:    date,
+        Time:    time,
+        Status:  'Reserved',
+        Notes:   `Location: ${location} | Deposit paid: ${amount}`,
+      },
+    }),
+  })
+}
 
 // Convert "2025-06-14" + "18:30" → "20250614T183000"
 function toICSDate(date: string, time: string): string {
@@ -171,6 +197,9 @@ export const handler: Handler = async (event) => {
     })
     const emailJson = await emailRes.json()
     console.log('Resend response:', JSON.stringify(emailJson))
+
+    // Save booking to Airtable
+    await createAirtableBooking(name, items, date, time, location, amount)
   }
 
   return { statusCode: 200, body: 'OK' }
