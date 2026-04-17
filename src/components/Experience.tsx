@@ -33,9 +33,8 @@ const ITEMS = RENTAL_ITEMS
 const ORS_KEY          = import.meta.env.VITE_ORS_KEY as string
 const BUSINESS_LNG     = -96.6989
 const BUSINESS_LAT     = 33.0198
-const MIN_DELIVERY_FEE = 10
 const MAX_DELIVERY_MI  = 50
-const RATE_PER_MILE    = 1
+const RATE_PER_MILE    = 0.75
 
 async function calcDelivery(address: string): Promise<{ fee: number; miles: number } | { error: string }> {
   try {
@@ -57,8 +56,8 @@ async function calcDelivery(address: string): Promise<{ fee: number; miles: numb
     const oneWayMiles = meters / 1609.34
     if (oneWayMiles > MAX_DELIVERY_MI) return { error: `Sorry, we only deliver within ${MAX_DELIVERY_MI} miles. Your location is ${Math.round(oneWayMiles)} miles away.` }
 
-    const roundTripMiles = oneWayMiles * 2
-    const fee = Math.max(MIN_DELIVERY_FEE, Math.round(roundTripMiles * RATE_PER_MILE))
+    const totalMiles = oneWayMiles * 4
+    const fee = Math.round(totalMiles * RATE_PER_MILE)
     return { fee, miles: Math.round(oneWayMiles * 10) / 10 }
   } catch {
     return { error: 'Failed to calculate distance. Please try again.' }
@@ -138,7 +137,6 @@ export function PaymentPanel({ item, onClose }: { item: ExperienceItem; onClose:
   const [deliveryErr,  setDeliveryErr]  = useState<string>('')
   const [calculating,  setCalculating]  = useState<boolean>(false)
   const [loading,       setLoading]       = useState<boolean>(false)
-  const [depositInput,  setDepositInput]  = useState<string>('')
 
   const otherItems = ITEMS.filter((i) => i.key !== item.key)
 
@@ -146,8 +144,8 @@ export function PaymentPanel({ item, onClose }: { item: ExperienceItem; onClose:
     + otherItems.reduce((sum, i) => sum + (extras[i.key] ? i.fullPrice * (extras[i.key] as number) : 0), 0)
   const deliveryFee   = deliveryType === 'delivery' && deliveryInfo ? deliveryInfo.fee : 0
   const grandTotal    = rentalTotal + deliveryFee
-  const depositAmount = Math.max(1, Math.min(grandTotal, Number(depositInput) || 0))
-  const canPay        = (deliveryType === 'pickup' || deliveryInfo !== null) && depositAmount > 0 && depositInput !== ''
+  const halfTotal  = Math.round(grandTotal / 2)
+  const canPay     = (deliveryType === 'pickup' || deliveryInfo !== null)
 
   const toggleExtra = (key: ItemKey, minQ: number): void => {
     setExtras((prev) => {
@@ -173,13 +171,13 @@ export function PaymentPanel({ item, onClose }: { item: ExperienceItem; onClose:
     else setDeliveryInfo(result)
   }
 
-  const pay = async (): Promise<void> => {
+  const pay = async (paymentType: 'full' | 'deposit'): Promise<void> => {
     if (!canPay) return
     setLoading(true)
     const lineItems: CheckoutLineItem[] = [
-      { name: `Deposit – ${item.name}`, amountCents: depositAmount * 100, quantity: 1 },
+      { name: item.name, amountCents: grandTotal * 100, quantity: 1 },
     ]
-    await startCheckout(lineItems, 'full')
+    await startCheckout(lineItems, paymentType)
     setLoading(false)
   }
 
@@ -337,7 +335,7 @@ export function PaymentPanel({ item, onClose }: { item: ExperienceItem; onClose:
                 </p>
               )}
               {!deliveryInfo && !deliveryErr && (
-                <p className="text-[11px] text-text-muted mt-1.5">Enter your address or ZIP code. Fee is based on round trip ($1/mile, min $10, max {MAX_DELIVERY_MI} miles one way).</p>
+                <p className="text-[11px] text-text-muted mt-1.5">Fee is $0.75/mile · 2 round trips (delivery + pickup) · Max {MAX_DELIVERY_MI} miles one way.</p>
               )}
             </div>
           )}
@@ -362,36 +360,23 @@ export function PaymentPanel({ item, onClose }: { item: ExperienceItem; onClose:
             </div>
           </div>
 
-          {/* Deposit amount input */}
-          <div>
-            <label className="text-[12px] font-bold text-text-muted uppercase tracking-wider block mb-2">
-              Deposit Amount ($)
-            </label>
-            <div className="relative">
-              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted font-semibold text-[14px]">$</span>
-              <input
-                type="number"
-                min="1"
-                max={grandTotal}
-                placeholder="0.00"
-                value={depositInput}
-                onChange={(e) => setDepositInput(e.target.value)}
-                className="w-full border border-border-col rounded-[10px] pl-7 pr-3 py-2.5 text-[14px] text-text-dark outline-none focus:border-gold bg-white"
-              />
-            </div>
-            {depositInput !== '' && depositAmount > grandTotal && (
-              <p className="text-red-500 text-[12px] mt-1">Cannot exceed total of ${grandTotal}</p>
-            )}
+          {/* Payment buttons */}
+          <div className="flex flex-col gap-2">
+            <button
+              className="w-full py-3 rounded-pill bg-gold text-off-white font-semibold text-[14px] border-none cursor-pointer hover:bg-gold-dark transition-colors disabled:opacity-50"
+              disabled={loading || !canPay}
+              onClick={() => void pay('full')}
+            >
+              {loading ? 'Redirecting…' : `Pay Full — $${grandTotal}`}
+            </button>
+            <button
+              className="w-full py-3 rounded-pill bg-white text-gold font-semibold text-[14px] border border-gold cursor-pointer hover:bg-gold hover:text-off-white transition-colors disabled:opacity-50"
+              disabled={loading || !canPay}
+              onClick={() => void pay('deposit')}
+            >
+              {loading ? 'Redirecting…' : `Pay 50% Deposit — $${halfTotal}`}
+            </button>
           </div>
-
-          {/* Pay Deposit button */}
-          <button
-            className="w-full py-3 rounded-pill bg-gold text-off-white font-semibold text-[14px] border-none cursor-pointer hover:bg-gold-dark transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
-            disabled={loading || !canPay}
-            onClick={() => void pay()}
-          >
-            {loading ? 'Redirecting…' : `Pay Deposit  $${depositAmount || ''}`}
-          </button>
 
           <p className="text-[11px] text-text-muted text-center">Secure payment powered by Stripe</p>
         </div>

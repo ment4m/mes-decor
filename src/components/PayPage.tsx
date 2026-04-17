@@ -38,8 +38,8 @@ async function calcDelivery(address: string): Promise<{ fee: number; miles: numb
     const oneWayMiles = meters / 1609.34
     if (oneWayMiles > MAX_DELIVERY_MI) return { error: `Sorry, we only deliver within ${MAX_DELIVERY_MI} miles. You are ${Math.round(oneWayMiles)} miles away.` }
 
-    // 2 round trips: delivery + pickup
-    const totalMiles = oneWayMiles * 2 * 2
+    // 2 round trips: deliver items + pick up items
+    const totalMiles = oneWayMiles * 4
     const fee = Math.round(totalMiles * RATE_PER_MILE)
     return { fee, miles: Math.round(oneWayMiles * 10) / 10 }
   } catch {
@@ -54,13 +54,14 @@ async function startCheckout(
   time:        string,
   location:    string,
   clientName:  string,
+  paymentType: 'full' | 'deposit',
 ): Promise<void> {
   const res  = await fetch('/.netlify/functions/create-checkout', {
     method:  'POST',
     headers: { 'Content-Type': 'application/json' },
     body:    JSON.stringify({
       items:       [{ name: label, amountCents, quantity: 1 }],
-      paymentType: 'full',
+      paymentType,
       date,
       time,
       location,
@@ -78,7 +79,6 @@ export default function PayPage(): React.ReactElement {
   const totalParam = params.get('total') ? Number(params.get('total')) : null
   const noteParam  = params.get('note')  ?? ''
 
-  const [depositInput,  setDepositInput]  = useState<string>('')
   const [clientName,    setClientName]    = useState<string>('')
   const [date,          setDate]          = useState<string>(params.get('date') ?? '')
   const [time,          setTime]          = useState<string>(params.get('time') ?? '')
@@ -92,10 +92,13 @@ export default function PayPage(): React.ReactElement {
   const [loading,       setLoading]       = useState<boolean>(false)
   const [error,         setError]         = useState<string>('')
 
-  const depositAmount = Number(depositInput) || 0
+  const rentalPrice   = totalParam ?? 0
   const deliveryFee   = deliveryType === 'delivery' && deliveryInfo ? deliveryInfo.fee : 0
-  const canPay        = depositAmount >= 1 && date.trim() !== '' && time.trim() !== '' && location.trim() !== ''
-                        && (deliveryType === 'pickup' || deliveryInfo !== null)
+  const grandTotal    = rentalPrice + deliveryFee
+  const halfTotal     = Math.round(grandTotal / 2)
+  const deliveryReady = deliveryType === 'pickup'
+                        || (address.trim() !== '' && zipCode.trim() !== '' && deliveryInfo !== null)
+  const canPay        = date.trim() !== '' && time.trim() !== '' && location.trim() !== '' && deliveryReady
 
   const handleCalcDelivery = async (): Promise<void> => {
     if (!address.trim() && !zipCode.trim()) return
@@ -116,14 +119,13 @@ export default function PayPage(): React.ReactElement {
     setZipCode('')
   }
 
-  const handlePay = async (): Promise<void> => {
+  const handlePay = async (paymentType: 'full' | 'deposit'): Promise<void> => {
     if (!canPay) return
     setLoading(true)
     setError('')
     try {
-      const label = `Mes Decor – ${clientName || items.join(', ') || 'Deposit'}`
-      const total = Math.round((depositAmount + deliveryFee) * 100)
-      await startCheckout(total, label, date, time, location, clientName)
+      const label = `Mes Decor – ${clientName || items.join(', ') || 'Booking'}`
+      await startCheckout(grandTotal * 100, label, date, time, location, clientName, paymentType)
     } catch {
       setError('Something went wrong. Please try again.')
       setLoading(false)
@@ -143,7 +145,7 @@ export default function PayPage(): React.ReactElement {
           className="w-14 h-14 rounded-full border-2 border-gold mx-auto mb-3 cursor-pointer"
           onClick={() => { window.location.href = '/' }}
         />
-        <h1 className="text-[26px] mob:text-[22px] font-bold text-text-dark">Pay Deposit</h1>
+        <h1 className="text-[26px] mob:text-[22px] font-bold text-text-dark">Complete Booking</h1>
         <p className="text-text-muted text-[14px] mt-1">Secure payment powered by Stripe</p>
       </div>
 
@@ -164,7 +166,7 @@ export default function PayPage(): React.ReactElement {
         )}
 
         {/* Summary info */}
-        {(items.length > 0 || noteParam || totalParam) && (
+        {(items.length > 0 && images.length === 0 || noteParam) && (
           <div className="bg-cream rounded-[12px] px-4 py-4 flex flex-col gap-1.5">
             {items.length > 0 && images.length === 0 && (
               <div className="flex justify-between text-[14px]">
@@ -176,12 +178,6 @@ export default function PayPage(): React.ReactElement {
               <div className="flex justify-between text-[14px]">
                 <span className="text-text-muted">Note</span>
                 <span className="font-semibold text-text-dark">{noteParam}</span>
-              </div>
-            )}
-            {totalParam && (
-              <div className={`flex justify-between text-[14px] ${(items.length > 0 || noteParam) ? 'border-t border-border-col mt-1 pt-2' : ''}`}>
-                <span className="font-bold text-text-dark">Total</span>
-                <span className="font-bold text-text-dark">${totalParam}</span>
               </div>
             )}
           </div>
@@ -242,9 +238,9 @@ export default function PayPage(): React.ReactElement {
           {deliveryType === 'delivery' && (
             <div className="flex flex-col gap-2">
               <div className="grid grid-cols-2 gap-2">
-                <input type="text" placeholder="Street address (no apt)" value={address}
+                <input type="text" placeholder="Street address *" value={address}
                   onChange={(e) => setAddress(e.target.value)} className={inputClass} />
-                <input type="text" placeholder="ZIP code" value={zipCode}
+                <input type="text" placeholder="ZIP code *" value={zipCode}
                   onChange={(e) => setZipCode(e.target.value)} className={inputClass} />
               </div>
               <button
@@ -265,57 +261,56 @@ export default function PayPage(): React.ReactElement {
           )}
         </div>
 
-        {/* Deposit amount */}
-        <div>
-          <label className="text-[12px] font-bold text-text-muted uppercase tracking-wider block mb-2">
-            Deposit Amount ($)
-          </label>
-          <div className="relative">
-            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted font-semibold text-[14px]">$</span>
-            <input
-              type="number" min="1" placeholder="0.00" value={depositInput}
-              onChange={(e) => setDepositInput(e.target.value)}
-              className="w-full border border-border-col rounded-[10px] pl-7 pr-3 py-2.5 text-[14px] text-text-dark outline-none focus:border-gold bg-white"
-            />
-          </div>
-          {depositInput !== '' && depositAmount < 1 && (
-            <p className="text-red-500 text-[12px] mt-1">Amount must be at least $1</p>
-          )}
-        </div>
-
-        {/* Total summary */}
-        {depositAmount > 0 && (
-          <div className="bg-cream rounded-[12px] px-4 py-3 flex flex-col gap-1.5">
+        {/* Price summary */}
+        <div className="bg-cream rounded-[12px] px-4 py-4 flex flex-col gap-1.5">
+          {rentalPrice > 0 && (
             <div className="flex justify-between text-[14px]">
-              <span className="text-text-muted">Deposit</span>
-              <span className="font-semibold text-text-dark">${depositAmount}</span>
+              <span className="text-text-muted">Rental</span>
+              <span className="font-semibold text-text-dark">${rentalPrice}</span>
             </div>
-            {deliveryFee > 0 && (
-              <div className="flex justify-between text-[14px]">
-                <span className="text-text-muted">Delivery ({deliveryInfo!.miles} mi × 4)</span>
-                <span className="font-semibold text-text-dark">${deliveryFee}</span>
-              </div>
-            )}
-            <div className="flex justify-between text-[14px] border-t border-border-col pt-2 mt-1">
-              <span className="font-bold text-text-dark">Total</span>
-              <span className="font-bold text-gold">${depositAmount + deliveryFee}</span>
+          )}
+          {deliveryFee > 0 && (
+            <div className="flex justify-between text-[14px]">
+              <span className="text-text-muted">Delivery ({deliveryInfo!.miles} mi × 4)</span>
+              <span className="font-semibold text-text-dark">${deliveryFee}</span>
             </div>
+          )}
+          <div className={`flex justify-between text-[15px] ${rentalPrice > 0 || deliveryFee > 0 ? 'border-t border-border-col pt-2 mt-1' : ''}`}>
+            <span className="font-bold text-text-dark">Grand Total</span>
+            <span className="font-bold text-gold">${grandTotal}</span>
           </div>
-        )}
+        </div>
 
         {error && <p className="text-red-500 text-[13px]">{error}</p>}
 
-        <button
-          onClick={() => void handlePay()}
-          disabled={loading || !canPay || depositInput === ''}
-          className="w-full py-3 rounded-pill bg-gold text-off-white font-semibold text-[14px] border-none cursor-pointer hover:bg-gold-dark transition-colors disabled:opacity-50"
-        >
-          {loading ? 'Redirecting…' : `Pay $${depositAmount + deliveryFee > 0 ? depositAmount + deliveryFee : ''}`}
-        </button>
-
-        {deliveryType === 'delivery' && !deliveryInfo && depositInput !== '' && (
-          <p className="text-[12px] text-text-muted text-center">Please calculate your delivery fee to continue.</p>
+        {deliveryType === 'delivery' && (
+          <>
+            {(!address.trim() || !zipCode.trim()) && (
+              <p className="text-red-500 text-[12px] text-center">Street address and ZIP code are required for delivery.</p>
+            )}
+            {address.trim() && zipCode.trim() && !deliveryInfo && (
+              <p className="text-[12px] text-text-muted text-center">Please calculate your delivery fee to continue.</p>
+            )}
+          </>
         )}
+
+        {/* Payment buttons */}
+        <div className="flex flex-col gap-2">
+          <button
+            onClick={() => void handlePay('full')}
+            disabled={loading || !canPay}
+            className="w-full py-3 rounded-pill bg-gold text-off-white font-semibold text-[14px] border-none cursor-pointer hover:bg-gold-dark transition-colors disabled:opacity-50"
+          >
+            {loading ? 'Redirecting…' : `Pay Full — $${grandTotal}`}
+          </button>
+          <button
+            onClick={() => void handlePay('deposit')}
+            disabled={loading || !canPay}
+            className="w-full py-3 rounded-pill bg-white text-gold font-semibold text-[14px] border border-gold cursor-pointer hover:bg-gold hover:text-off-white transition-colors disabled:opacity-50"
+          >
+            {loading ? 'Redirecting…' : `Pay 50% Deposit — $${halfTotal}`}
+          </button>
+        </div>
 
         <p className="text-[11px] text-text-muted text-center">
           Your payment is processed securely by Stripe.<br />

@@ -61,7 +61,16 @@ export default function Admin(): React.ReactElement {
   const [reviewLinkCopied,  setReviewLinkCopied]  = useState(false)
 
   const toggleItemKey = (key: string): void => {
-    setSelectedKeys((prev) => prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key])
+    setSelectedKeys((prev) => {
+      const next = prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key]
+      const autoTotal = next.reduce((sum, k) => {
+        const ri = RENTAL_ITEMS.find((r) => r.key === k)
+        if (!ri) return sum
+        return sum + ri.fullPrice * (ri.unit === 'chair' ? (ri.minQty ?? 1) : 1)
+      }, 0)
+      setItemLinkAmount(autoTotal > 0 ? String(autoTotal) : '')
+      return next
+    })
   }
 
   const buildItemPayLink = (amount: string): string => {
@@ -465,7 +474,7 @@ export default function Admin(): React.ReactElement {
 
                 {/* Total amount */}
                 <div>
-                  <label className="text-[12px] font-bold text-text-muted uppercase tracking-wider block mb-1.5">Total Amount (optional)</label>
+                  <label className="text-[12px] font-bold text-text-muted uppercase tracking-wider block mb-1.5">Rental Price</label>
                   <div className="relative">
                     <span className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted font-semibold text-[14px]">$</span>
                     <input
@@ -477,7 +486,7 @@ export default function Admin(): React.ReactElement {
                       className="w-full border border-border-col rounded-[10px] pl-7 pr-3 py-2.5 text-[13px] text-text-dark outline-none focus:border-gold bg-white"
                     />
                   </div>
-                  <p className="text-[11px] text-text-muted mt-1">Customer cannot exceed this amount. Leave blank for any amount.</p>
+                  <p className="text-[11px] text-text-muted mt-1">Auto-calculated from selected items. You can adjust before sending.</p>
                 </div>
 
                 {/* Link preview */}
