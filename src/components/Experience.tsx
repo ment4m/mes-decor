@@ -40,7 +40,7 @@ const RATE_PER_MILE    = 1
 async function calcDelivery(address: string): Promise<{ fee: number; miles: number } | { error: string }> {
   try {
     const geoRes  = await fetch(
-      `https://api.openrouteservice.org/geocode/search?api_key=${ORS_KEY}&text=${encodeURIComponent(address)}&boundary.country=US&size=1`
+      `https://api.openrouteservice.org/geocode/search?api_key=${ORS_KEY}&text=${encodeURIComponent(address)}&boundary.country=US&focus.point.lat=${BUSINESS_LAT}&focus.point.lon=${BUSINESS_LNG}&size=1`
     )
     const geoData = await geoRes.json()
     if (!geoData.features?.length) return { error: 'Address not found. Please check and try again.' }
@@ -373,7 +373,7 @@ export function PaymentPanel({ item, onClose }: { item: ExperienceItem; onClose:
                 type="number"
                 min="1"
                 max={grandTotal}
-                placeholder={`Enter amount (max $${grandTotal})`}
+                placeholder="0.00"
                 value={depositInput}
                 onChange={(e) => setDepositInput(e.target.value)}
                 className="w-full border border-border-col rounded-[10px] pl-7 pr-3 py-2.5 text-[14px] text-text-dark outline-none focus:border-gold bg-white"

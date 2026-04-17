@@ -51,8 +51,8 @@ function buildICS(title: string, date: string, time: string, location: string, d
     'PRODID:-//Mes Decor//EN',
     'BEGIN:VEVENT',
     `SUMMARY:${title}`,
-    `DTSTART:${start}`,
-    `DTEND:${end}`,
+    `DTSTART;TZID=America/Chicago:${start}`,
+    `DTEND;TZID=America/Chicago:${end}`,
     `LOCATION:${location}`,
     `DESCRIPTION:${description}`,
     'END:VEVENT',
@@ -69,6 +69,7 @@ function googleCalLink(title: string, date: string, time: string, location: stri
     action:   'TEMPLATE',
     text:     title,
     dates:    `${start}/${end}`,
+    ctz:      'America/Chicago',
     location,
     details,
   })
@@ -104,11 +105,12 @@ export const handler: Handler = async (event) => {
     const subject     = `💰 New Booking – ${name !== 'N/A' ? name : items} on ${date}`
 
     // Format date nicely for email display
+    const tz          = 'America/Chicago'
     const displayDate = date
-      ? new Date(date + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })
+      ? new Date(date + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', timeZone: tz })
       : 'N/A'
     const displayTime = time
-      ? new Date(`2000-01-01T${time}`).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })
+      ? new Date(`2000-01-01T${time}`).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true, timeZone: tz }) + ' CT'
       : 'N/A'
 
     const gcalLink = date && time ? googleCalLink(title, date, time, location, description) : ''
