@@ -1,4 +1,5 @@
 import React, { useState } from 'react'
+import { RENTAL_ITEMS } from './Experience'
 
 const ORS_KEY         = import.meta.env.VITE_ORS_KEY as string
 const BUSINESS_LNG    = -96.6989
@@ -40,7 +41,7 @@ async function calcDelivery(address: string): Promise<{ fee: number; miles: numb
 
     // 2 round trips: deliver items + pick up items
     const totalMiles = oneWayMiles * 4
-    const fee = Math.round(totalMiles * RATE_PER_MILE)
+    const fee = Math.max(20, Math.round(totalMiles * RATE_PER_MILE))
     return { fee, miles: Math.round(oneWayMiles * 10) / 10 }
   } catch {
     return { error: 'Failed to calculate distance. Please try again.' }
@@ -95,7 +96,6 @@ export default function PayPage(): React.ReactElement {
   const rentalPrice   = totalParam ?? 0
   const deliveryFee   = deliveryType === 'delivery' && deliveryInfo ? deliveryInfo.fee : 0
   const grandTotal    = rentalPrice + deliveryFee
-  const halfTotal     = Math.round(grandTotal / 2)
   const deliveryReady = deliveryType === 'pickup'
                         || (address.trim() !== '' && zipCode.trim() !== '' && deliveryInfo !== null)
   const canPay        = date.trim() !== '' && time.trim() !== '' && location.trim() !== '' && deliveryReady
@@ -125,7 +125,7 @@ export default function PayPage(): React.ReactElement {
     setError('')
     try {
       const label = `Mes Decor – ${clientName || items.join(', ') || 'Booking'}`
-      await startCheckout(grandTotal * 100, label, date, time, location, clientName, paymentType)
+      await startCheckout(Math.round(grandTotal * 100), label, date, time, location, clientName, paymentType)
     } catch {
       setError('Something went wrong. Please try again.')
       setLoading(false)
@@ -154,14 +154,26 @@ export default function PayPage(): React.ReactElement {
         {/* Item images grid */}
         {images.length > 0 && (
           <div className={`grid gap-3 ${images.length === 1 ? 'grid-cols-1' : 'grid-cols-2'}`}>
-            {images.map((src, i) => (
-              <div key={i} className="rounded-[12px] overflow-hidden border border-border-col">
-                <img src={src} alt={items[i] ?? ''} className="w-full h-[160px] object-cover block" />
-                {items[i] && (
-                  <p className="text-[12px] font-semibold text-text-dark px-3 py-2 bg-cream">{items[i]}</p>
-                )}
-              </div>
-            ))}
+            {images.map((src, i) => {
+              const itemName   = items[i] ?? ''
+              const rentalItem = RENTAL_ITEMS.find((r) => r.name === itemName)
+              const priceLabel = rentalItem
+                ? rentalItem.unit === 'chair'
+                  ? `$${rentalItem.fullPrice}/chair`
+                  : `$${rentalItem.fullPrice}`
+                : null
+              return (
+                <div key={i} className="rounded-[12px] overflow-hidden border border-border-col">
+                  <img src={src} alt={itemName} className="w-full h-[160px] object-cover block" />
+                  {itemName && (
+                    <div className="px-3 py-2 bg-cream flex items-center justify-between gap-2">
+                      <p className="text-[12px] font-semibold text-text-dark">{itemName}</p>
+                      {priceLabel && <p className="text-[12px] font-bold text-gold whitespace-nowrap">{priceLabel}</p>}
+                    </div>
+                  )}
+                </div>
+              )
+            })}
           </div>
         )}
 
@@ -277,7 +289,7 @@ export default function PayPage(): React.ReactElement {
           )}
           <div className={`flex justify-between text-[15px] ${rentalPrice > 0 || deliveryFee > 0 ? 'border-t border-border-col pt-2 mt-1' : ''}`}>
             <span className="font-bold text-text-dark">Grand Total</span>
-            <span className="font-bold text-gold">${grandTotal}</span>
+            <span className="font-bold text-gold">${grandTotal.toFixed(2)}</span>
           </div>
         </div>
 
@@ -301,14 +313,14 @@ export default function PayPage(): React.ReactElement {
             disabled={loading || !canPay}
             className="w-full py-3 rounded-pill bg-gold text-off-white font-semibold text-[14px] border-none cursor-pointer hover:bg-gold-dark transition-colors disabled:opacity-50"
           >
-            {loading ? 'Redirecting…' : `Pay Full — $${grandTotal}`}
+            {loading ? 'Redirecting…' : 'Pay Full'}
           </button>
           <button
             onClick={() => void handlePay('deposit')}
             disabled={loading || !canPay}
             className="w-full py-3 rounded-pill bg-white text-gold font-semibold text-[14px] border border-gold cursor-pointer hover:bg-gold hover:text-off-white transition-colors disabled:opacity-50"
           >
-            {loading ? 'Redirecting…' : `Pay 50% Deposit — $${halfTotal}`}
+            {loading ? 'Redirecting…' : 'Pay 50% Deposit'}
           </button>
         </div>
 

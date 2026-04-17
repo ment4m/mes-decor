@@ -57,7 +57,7 @@ async function calcDelivery(address: string): Promise<{ fee: number; miles: numb
     if (oneWayMiles > MAX_DELIVERY_MI) return { error: `Sorry, we only deliver within ${MAX_DELIVERY_MI} miles. Your location is ${Math.round(oneWayMiles)} miles away.` }
 
     const totalMiles = oneWayMiles * 4
-    const fee = Math.round(totalMiles * RATE_PER_MILE)
+    const fee = Math.max(20, Math.round(totalMiles * RATE_PER_MILE))
     return { fee, miles: Math.round(oneWayMiles * 10) / 10 }
   } catch {
     return { error: 'Failed to calculate distance. Please try again.' }
@@ -144,7 +144,6 @@ export function PaymentPanel({ item, onClose }: { item: ExperienceItem; onClose:
     + otherItems.reduce((sum, i) => sum + (extras[i.key] ? i.fullPrice * (extras[i.key] as number) : 0), 0)
   const deliveryFee   = deliveryType === 'delivery' && deliveryInfo ? deliveryInfo.fee : 0
   const grandTotal    = rentalTotal + deliveryFee
-  const halfTotal  = Math.round(grandTotal / 2)
   const canPay     = (deliveryType === 'pickup' || deliveryInfo !== null)
 
   const toggleExtra = (key: ItemKey, minQ: number): void => {
@@ -175,7 +174,7 @@ export function PaymentPanel({ item, onClose }: { item: ExperienceItem; onClose:
     if (!canPay) return
     setLoading(true)
     const lineItems: CheckoutLineItem[] = [
-      { name: item.name, amountCents: grandTotal * 100, quantity: 1 },
+      { name: item.name, amountCents: Math.round(grandTotal * 100), quantity: 1 },
     ]
     await startCheckout(lineItems, paymentType)
     setLoading(false)
@@ -367,14 +366,14 @@ export function PaymentPanel({ item, onClose }: { item: ExperienceItem; onClose:
               disabled={loading || !canPay}
               onClick={() => void pay('full')}
             >
-              {loading ? 'Redirecting…' : `Pay Full — $${grandTotal}`}
+              {loading ? 'Redirecting…' : 'Pay Full'}
             </button>
             <button
               className="w-full py-3 rounded-pill bg-white text-gold font-semibold text-[14px] border border-gold cursor-pointer hover:bg-gold hover:text-off-white transition-colors disabled:opacity-50"
               disabled={loading || !canPay}
               onClick={() => void pay('deposit')}
             >
-              {loading ? 'Redirecting…' : `Pay 50% Deposit — $${halfTotal}`}
+              {loading ? 'Redirecting…' : 'Pay 50% Deposit'}
             </button>
           </div>
 
