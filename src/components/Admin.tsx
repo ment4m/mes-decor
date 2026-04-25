@@ -65,6 +65,8 @@ export default function Admin(): React.ReactElement {
   const [showItemLink,      setShowItemLink]      = useState(false)
   const [itemLinkCopied,    setItemLinkCopied]    = useState(false)
   const [reviewLinkCopied,  setReviewLinkCopied]  = useState(false)
+  const [balanceAmount,     setBalanceAmount]     = useState<string>('')
+  const [balanceCopied,     setBalanceCopied]     = useState(false)
 
   const toggleItemKey = (key: string): void => {
     setSelectedKeys((prev) => {
@@ -108,6 +110,23 @@ export default function Admin(): React.ReactElement {
     void navigator.clipboard.writeText(buildItemReviewLink())
     setReviewLinkCopied(true)
     setTimeout(() => setReviewLinkCopied(false), 2000)
+  }
+
+  const buildBalanceLink = (): string => {
+    const base   = window.location.origin
+    const params = new URLSearchParams()
+    selectedKeys.forEach((key) => {
+      const ri = RENTAL_ITEMS.find((r) => r.key === key)
+      if (ri) { params.append('item', ri.name); params.append('image', ri.images[0]) }
+    })
+    if (balanceAmount) params.set('amount', balanceAmount)
+    return `${base}/pay?${params.toString()}`
+  }
+
+  const copyBalanceLink = (): void => {
+    void navigator.clipboard.writeText(buildBalanceLink())
+    setBalanceCopied(true)
+    setTimeout(() => setBalanceCopied(false), 2000)
   }
 
   const buildPayLink = (b: Booking, amount: string, itemName: string): string => {
@@ -601,6 +620,52 @@ export default function Admin(): React.ReactElement {
                     target="_blank"
                     rel="noreferrer"
                     className="flex-1 py-2.5 rounded-pill font-semibold text-[13px] bg-[#25D366] text-white cursor-pointer hover:bg-[#1ebe5d] transition-colors no-underline text-center"
+                  >
+                    Send via WhatsApp
+                  </a>
+                </div>
+              </div>
+            )}
+
+            {/* ── Remaining Balance Link ── */}
+            {selectedKeys.length > 0 && (
+              <div className="bg-white rounded-[16px] border border-border-col px-5 py-5 flex flex-col gap-4 shadow-sm">
+                <div>
+                  <p className="text-[14px] font-bold text-text-dark mb-1">Send Remaining Balance Link</p>
+                  <p className="text-[12px] text-text-muted">Enter the exact amount the client still owes.</p>
+                </div>
+                <div>
+                  <label className="text-[12px] font-bold text-text-muted uppercase tracking-wider block mb-1.5">Remaining Amount</label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted font-semibold text-[14px]">$</span>
+                    <input
+                      type="number"
+                      min="1"
+                      placeholder="e.g. 150"
+                      value={balanceAmount}
+                      onChange={(e) => setBalanceAmount(e.target.value)}
+                      className="w-full border border-border-col rounded-[10px] pl-7 pr-3 py-2.5 text-[13px] text-text-dark outline-none focus:border-gold bg-white"
+                    />
+                  </div>
+                </div>
+                {balanceAmount && (
+                  <div className="bg-cream rounded-[10px] px-3 py-2.5">
+                    <p className="text-[11px] text-text-muted break-all">{buildBalanceLink()}</p>
+                  </div>
+                )}
+                <div className="flex gap-2">
+                  <button
+                    onClick={copyBalanceLink}
+                    disabled={!balanceAmount}
+                    className={`flex-1 py-2.5 rounded-pill font-semibold text-[13px] border-none cursor-pointer transition-colors disabled:opacity-50 ${balanceCopied ? 'bg-green-500 text-white' : 'bg-gold text-off-white hover:bg-gold-dark'}`}
+                  >
+                    {balanceCopied ? 'Copied!' : 'Copy Link'}
+                  </button>
+                  <a
+                    href={balanceAmount ? `https://wa.me/?text=${encodeURIComponent(`Hi, here is your remaining balance payment link: ${buildBalanceLink()}`)}` : '#'}
+                    target="_blank"
+                    rel="noreferrer"
+                    className={`flex-1 py-2.5 rounded-pill font-semibold text-[13px] bg-[#25D366] text-white cursor-pointer hover:bg-[#1ebe5d] transition-colors no-underline text-center ${!balanceAmount ? 'opacity-50 pointer-events-none' : ''}`}
                   >
                     Send via WhatsApp
                   </a>
