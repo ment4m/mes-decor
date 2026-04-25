@@ -1,9 +1,11 @@
 const BASE_ID        = import.meta.env.VITE_AIRTABLE_BASE_ID
 const TABLE_ID       = import.meta.env.VITE_AIRTABLE_TABLE_ID
 const REVIEWS_TABLE  = 'tblZq8VBiA4MLmVJj'
+const ITEMS_TABLE    = 'tblS2393EZKtDJA76'
 const TOKEN          = import.meta.env.VITE_AIRTABLE_TOKEN
 const API_URL        = `https://api.airtable.com/v0/${BASE_ID}/${TABLE_ID}`
 const REVIEWS_URL    = `https://api.airtable.com/v0/${BASE_ID}/${REVIEWS_TABLE}`
+const ITEMS_URL      = `https://api.airtable.com/v0/${BASE_ID}/${ITEMS_TABLE}`
 
 const headers = {
   'Authorization': `Bearer ${TOKEN}`,
@@ -159,6 +161,42 @@ export async function submitReview(data: { name: string; rating: number; comment
     headers,
     body: JSON.stringify({ fields }),
   })
+}
+
+// ── Item Prices ───────────────────────────────────────────────
+
+export interface ItemPrice {
+  id:    string
+  name:  string
+  price: number
+}
+
+export async function fetchItemPrices(): Promise<ItemPrice[]> {
+  const res  = await fetch(ITEMS_URL, { headers })
+  const json = await res.json()
+  return (json.records ?? []).map((r: { id: string; fields: Record<string, string> }) => ({
+    id:    r.id,
+    name:  r.fields.Name  ?? '',
+    price: Number(r.fields.Price) || 0,
+  }))
+}
+
+export async function updateItemPrice(id: string, price: number): Promise<void> {
+  await fetch(`${ITEMS_URL}/${id}`, {
+    method:  'PATCH',
+    headers,
+    body:    JSON.stringify({ fields: { Price: String(price) } }),
+  })
+}
+
+export async function createItemRecord(name: string, price: number): Promise<ItemPrice> {
+  const res  = await fetch(ITEMS_URL, {
+    method:  'POST',
+    headers,
+    body:    JSON.stringify({ fields: { Name: name, Price: String(price) } }),
+  })
+  const json = await res.json()
+  return { id: json.id, name, price }
 }
 
 // Create a booking manually (admin)

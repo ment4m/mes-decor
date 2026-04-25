@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { fetchAllBookings, updateBookingStatus, deleteBooking, createBooking, fetchAllReviews, updateReviewStatus, updateReviewImage, type Booking, type BookingStatus, type Review } from '../lib/airtable'
+import { fetchAllBookings, updateBookingStatus, deleteBooking, createBooking, fetchAllReviews, updateReviewStatus, updateReviewImage, fetchItemPrices, updateItemPrice, createItemRecord, type Booking, type BookingStatus, type Review, type ItemPrice } from '../lib/airtable'
 import { RENTAL_ITEMS } from './Experience'
 
 const STATUS_COLORS: Record<BookingStatus | 'Completed', string> = {
@@ -32,7 +32,7 @@ export default function Admin(): React.ReactElement {
   const [password, setPassword] = useState('')
   const [pwError,  setPwError]  = useState(false)
 
-  const [tab,       setTab]       = useState<'bookings' | 'reviews' | 'items'>('bookings')
+  const [tab,       setTab]       = useState<'bookings' | 'reviews' | 'items' | 'prices'>('bookings')
 
   const [bookings,  setBookings]  = useState<Booking[]>([])
   const [loading,   setLoading]   = useState(false)
@@ -52,6 +52,12 @@ export default function Admin(): React.ReactElement {
   const [linkAmount, setLinkAmount] = useState<string>('')
   const [linkItem,   setLinkItem]   = useState<string>('')
   const [linkCopied, setLinkCopied] = useState(false)
+
+  const [itemPrices,       setItemPrices]       = useState<ItemPrice[]>([])
+  const [pricesLoading,    setPricesLoading]    = useState(false)
+  const [priceSaving,      setPriceSaving]      = useState<string | null>(null)
+  const [priceSaved,       setPriceSaved]       = useState<string | null>(null)
+  const [localPrices,      setLocalPrices]      = useState<Record<string, string>>({})
 
   // Items tab state
   const [selectedKeys,    setSelectedKeys]    = useState<string[]>([])
@@ -156,7 +162,33 @@ export default function Admin(): React.ReactElement {
       .finally(() => setReviewsLoading(false))
   }, [authed, tab])
 
+  useEffect(() => {
+    if (!authed || tab !== 'prices') return
+    setPricesLoading(true)
+    fetchItemPrices().then(async (existing) => {
+      // Auto-create any missing items
+      const missing = RENTAL_ITEMS.filter((ri) => !existing.find((e) => e.name === ri.name))
+      const created = await Promise.all(missing.map((ri) => createItemRecord(ri.name, ri.fullPrice)))
+      const all = [...existing, ...created]
+      setItemPrices(all)
+      const map: Record<string, string> = {}
+      all.forEach((ip) => { map[ip.id] = String(ip.price) })
+      setLocalPrices(map)
+    }).finally(() => setPricesLoading(false))
+  }, [authed, tab])
+
   const [reviewError, setReviewError] = useState<string>('')
+
+  const handlePriceSave = async (id: string): Promise<void> => {
+    const val = Number(localPrices[id])
+    if (!val || val <= 0) return
+    setPriceSaving(id)
+    await updateItemPrice(id, val)
+    setItemPrices((prev) => prev.map((ip) => ip.id === id ? { ...ip, price: val } : ip))
+    setPriceSaving(null)
+    setPriceSaved(id)
+    setTimeout(() => setPriceSaved((cur) => cur === id ? null : cur), 2000)
+  }
 
   const handleReviewStatus = async (id: string, status: 'Approved' | 'Rejected'): Promise<void> => {
     setReviewUpdating(id)
@@ -234,40 +266,41 @@ export default function Admin(): React.ReactElement {
 
   // ── Dashboard ─────────────────────────────────────────────
   return (
-    <div className="min-h-screen bg-[#f5f0e8] px-4 py-8">
+    <div className="min-h-screen bg-[#f5f0e8] px-4 mob:px-3 py-6">
       <div className="max-w-[1000px] mx-auto">
 
         {/* Header */}
-        <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
-          <div>
-            <p className="text-gold font-bold text-[12px] uppercase tracking-widest">Mes Decor</p>
-            <h1 className="text-text-dark text-[24px] font-bold">Admin Dashboard</h1>
+        <div className="flex items-center justify-between mb-5 gap-3">
+          <div className="min-w-0">
+            <p className="text-gold font-bold text-[11px] uppercase tracking-widest">Mes Decor</p>
+            <h1 className="text-text-dark text-[20px] mob:text-[18px] font-bold leading-tight">Admin Dashboard</h1>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-shrink-0 flex-wrap justify-end">
             {tab === 'bookings' && (
               <>
-                <button onClick={() => setShowAdd(true)} className="px-4 py-2 bg-gold text-off-white text-[13px] font-semibold rounded-[10px] border-none cursor-pointer hover:bg-gold-dark transition-colors">+ Add Booking</button>
-                <button onClick={() => { setLoading(true); fetchAllBookings().then(setBookings).finally(() => setLoading(false)) }} className="px-4 py-2 bg-dark text-off-white text-[13px] font-semibold rounded-[10px] border-none cursor-pointer hover:bg-dark-deep transition-colors">Refresh</button>
+                <button onClick={() => setShowAdd(true)} className="px-3 py-2 bg-gold text-off-white text-[12px] font-semibold rounded-[10px] border-none cursor-pointer hover:bg-gold-dark transition-colors whitespace-nowrap">+ Add</button>
+                <button onClick={() => { setLoading(true); fetchAllBookings().then(setBookings).finally(() => setLoading(false)) }} className="px-3 py-2 bg-dark text-off-white text-[12px] font-semibold rounded-[10px] border-none cursor-pointer hover:bg-dark-deep transition-colors">↺</button>
               </>
             )}
             {tab === 'reviews' && (
-              <button onClick={() => { setReviewsLoading(true); fetchAllReviews().then(setReviews).finally(() => setReviewsLoading(false)) }} className="px-4 py-2 bg-dark text-off-white text-[13px] font-semibold rounded-[10px] border-none cursor-pointer hover:bg-dark-deep transition-colors">Refresh</button>
+              <button onClick={() => { setReviewsLoading(true); fetchAllReviews().then(setReviews).finally(() => setReviewsLoading(false)) }} className="px-3 py-2 bg-dark text-off-white text-[12px] font-semibold rounded-[10px] border-none cursor-pointer hover:bg-dark-deep transition-colors">↺ Refresh</button>
             )}
-            <button onClick={() => window.location.href = '/'} className="px-4 py-2 bg-white text-text-dark text-[13px] font-semibold rounded-[10px] border border-border-col cursor-pointer hover:border-gold transition-colors">← Site</button>
+            <button onClick={() => window.location.href = '/'} className="px-3 py-2 bg-white text-text-dark text-[12px] font-semibold rounded-[10px] border border-border-col cursor-pointer hover:border-gold transition-colors whitespace-nowrap">← Site</button>
           </div>
         </div>
 
         {/* Tabs */}
-        <div className="flex gap-2 mb-6">
-          <button onClick={() => setTab('bookings')} className={`px-5 py-2 rounded-[10px] text-[13px] font-semibold border transition-colors cursor-pointer ${tab === 'bookings' ? 'bg-dark border-dark text-off-white' : 'bg-white border-border-col text-text-dark hover:border-gold'}`}>Bookings</button>
-          <button onClick={() => setTab('reviews')}  className={`px-5 py-2 rounded-[10px] text-[13px] font-semibold border transition-colors cursor-pointer ${tab === 'reviews'  ? 'bg-dark border-dark text-off-white' : 'bg-white border-border-col text-text-dark hover:border-gold'}`}>Reviews</button>
-          <button onClick={() => setTab('items')}    className={`px-5 py-2 rounded-[10px] text-[13px] font-semibold border transition-colors cursor-pointer ${tab === 'items'    ? 'bg-dark border-dark text-off-white' : 'bg-white border-border-col text-text-dark hover:border-gold'}`}>Send Link</button>
+        <div className="flex gap-2 mb-5 overflow-x-auto pb-1" style={{ scrollbarWidth: 'none' }}>
+          <button onClick={() => setTab('bookings')} className={`px-4 py-2 rounded-[10px] text-[12px] font-semibold border transition-colors cursor-pointer whitespace-nowrap flex-shrink-0 ${tab === 'bookings' ? 'bg-dark border-dark text-off-white' : 'bg-white border-border-col text-text-dark hover:border-gold'}`}>Bookings</button>
+          <button onClick={() => setTab('reviews')}  className={`px-4 py-2 rounded-[10px] text-[12px] font-semibold border transition-colors cursor-pointer whitespace-nowrap flex-shrink-0 ${tab === 'reviews'  ? 'bg-dark border-dark text-off-white' : 'bg-white border-border-col text-text-dark hover:border-gold'}`}>Reviews</button>
+          <button onClick={() => setTab('items')}    className={`px-4 py-2 rounded-[10px] text-[12px] font-semibold border transition-colors cursor-pointer whitespace-nowrap flex-shrink-0 ${tab === 'items'    ? 'bg-dark border-dark text-off-white' : 'bg-white border-border-col text-text-dark hover:border-gold'}`}>Send Link</button>
+          <button onClick={() => setTab('prices')}   className={`px-4 py-2 rounded-[10px] text-[12px] font-semibold border transition-colors cursor-pointer whitespace-nowrap flex-shrink-0 ${tab === 'prices'   ? 'bg-dark border-dark text-off-white' : 'bg-white border-border-col text-text-dark hover:border-gold'}`}>Item Prices</button>
         </div>
 
         {/* ── Bookings Tab ── */}
         {tab === 'bookings' && (
           <>
-            <div className="grid grid-cols-5 gap-3 mb-6">
+            <div className="grid grid-cols-5 mob:grid-cols-3 gap-2 mb-5">
               {(['All', ...ALL_STATUSES, 'Completed'] as const).map((s) => {
                 const count = s === 'All'       ? bookings.length
                             : s === 'Completed' ? bookings.filter((b) => isDatePassed(b.date)).length
@@ -288,46 +321,45 @@ export default function Admin(): React.ReactElement {
             ) : (
               <div className="flex flex-col gap-3">
                 {displayed.map((b) => (
-                  <div key={b.id} className="bg-white rounded-[16px] px-5 py-4 shadow-sm flex flex-wrap items-center gap-4">
-                    <div className="flex-1 min-w-[200px]">
-                      <p className="font-bold text-text-dark text-[15px]">{b.name}</p>
-                      <p className="text-text-muted text-[13px]">{b.phone}</p>
+                  <div key={b.id} className="bg-white rounded-[16px] px-4 py-4 shadow-sm flex flex-col gap-3">
+                    <div className="flex items-start justify-between gap-2">
+                      <div>
+                        <p className="font-bold text-text-dark text-[15px]">{b.name}</p>
+                        <p className="text-text-muted text-[13px]">{b.phone}</p>
+                      </div>
+                      <span className={`px-3 py-1 rounded-full text-[12px] font-bold border flex-shrink-0 ${STATUS_COLORS[isDatePassed(b.date) ? 'Completed' : b.status]}`}>
+                        {isDatePassed(b.date) ? 'Completed' : b.status}
+                      </span>
                     </div>
-                    <div className="flex-1 min-w-[160px]">
+                    <div>
                       <p className="text-text-dark text-[13px] font-semibold">{b.service}</p>
                       <p className="text-text-muted text-[12px]">{b.date} {b.time && `· ${b.time}`}</p>
                     </div>
-                    <span className={`px-3 py-1 rounded-full text-[12px] font-bold border ${STATUS_COLORS[isDatePassed(b.date) ? 'Completed' : b.status]}`}>
-                      {isDatePassed(b.date) ? 'Completed' : b.status}
-                    </span>
-                    {!isDatePassed(b.date) && (
-                      <div className="flex gap-2 flex-wrap">
-                        {ALL_STATUSES.filter((s) => s !== b.status).map((s) => (
-                          <button key={s} disabled={updating === b.id} onClick={() => void handleStatus(b.id, s)} className="px-3 py-1.5 rounded-[8px] text-[12px] font-semibold border border-border-col bg-white text-text-dark cursor-pointer hover:border-gold hover:text-gold transition-colors disabled:opacity-50">
-                            {updating === b.id ? '…' : `→ ${s}`}
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                    {b.date && !isDatePassed(b.date) && (
-                      <a href={calendarUrl(b)} target="_blank" rel="noreferrer" className="px-3 py-1.5 rounded-[8px] text-[12px] font-semibold border border-blue-200 bg-white text-blue-500 cursor-pointer hover:bg-blue-50 hover:border-blue-400 transition-colors no-underline whitespace-nowrap">+ Calendar</a>
-                    )}
-                    <button
-                      onClick={() => { setLinkModal(b); setLinkAmount(''); setLinkItem(''); setLinkCopied(false) }}
-                      className="px-3 py-1.5 rounded-[8px] text-[12px] font-semibold border border-gold bg-white text-gold cursor-pointer hover:bg-gold hover:text-off-white transition-colors whitespace-nowrap"
-                    >
-                      Send Link
-                    </button>
-
-                    {confirmDel === b.id ? (
-                      <div className="flex gap-2 items-center">
-                        <span className="text-[12px] text-red-500 font-semibold">Delete?</span>
-                        <button onClick={() => void handleDelete(b.id)} className="px-3 py-1.5 rounded-[8px] text-[12px] font-semibold bg-red-500 text-white border-none cursor-pointer hover:bg-red-600 transition-colors">Yes</button>
-                        <button onClick={() => setConfirmDel(null)} className="px-3 py-1.5 rounded-[8px] text-[12px] font-semibold border border-border-col bg-white text-text-dark cursor-pointer hover:border-gold transition-colors">No</button>
-                      </div>
-                    ) : (
-                      <button onClick={() => setConfirmDel(b.id)} className="px-3 py-1.5 rounded-[8px] text-[12px] font-semibold border border-red-200 bg-white text-red-400 cursor-pointer hover:bg-red-50 hover:border-red-400 transition-colors">Delete</button>
-                    )}
+                    <div className="flex gap-2 flex-wrap">
+                      {!isDatePassed(b.date) && ALL_STATUSES.filter((s) => s !== b.status).map((s) => (
+                        <button key={s} disabled={updating === b.id} onClick={() => void handleStatus(b.id, s)} className="px-3 py-1.5 rounded-[8px] text-[12px] font-semibold border border-border-col bg-white text-text-dark cursor-pointer hover:border-gold hover:text-gold transition-colors disabled:opacity-50">
+                          {updating === b.id ? '…' : `→ ${s}`}
+                        </button>
+                      ))}
+                      {b.date && !isDatePassed(b.date) && (
+                        <a href={calendarUrl(b)} target="_blank" rel="noreferrer" className="px-3 py-1.5 rounded-[8px] text-[12px] font-semibold border border-blue-200 bg-white text-blue-500 cursor-pointer hover:bg-blue-50 hover:border-blue-400 transition-colors no-underline whitespace-nowrap">+ Cal</a>
+                      )}
+                      <button
+                        onClick={() => { setLinkModal(b); setLinkAmount(''); setLinkItem(''); setLinkCopied(false) }}
+                        className="px-3 py-1.5 rounded-[8px] text-[12px] font-semibold border border-gold bg-white text-gold cursor-pointer hover:bg-gold hover:text-off-white transition-colors whitespace-nowrap"
+                      >
+                        Send Link
+                      </button>
+                      {confirmDel === b.id ? (
+                        <>
+                          <span className="text-[12px] text-red-500 font-semibold self-center">Delete?</span>
+                          <button onClick={() => void handleDelete(b.id)} className="px-3 py-1.5 rounded-[8px] text-[12px] font-semibold bg-red-500 text-white border-none cursor-pointer hover:bg-red-600 transition-colors">Yes</button>
+                          <button onClick={() => setConfirmDel(null)} className="px-3 py-1.5 rounded-[8px] text-[12px] font-semibold border border-border-col bg-white text-text-dark cursor-pointer hover:border-gold transition-colors">No</button>
+                        </>
+                      ) : (
+                        <button onClick={() => setConfirmDel(b.id)} className="px-3 py-1.5 rounded-[8px] text-[12px] font-semibold border border-red-200 bg-white text-red-400 cursor-pointer hover:bg-red-50 hover:border-red-400 transition-colors">Delete</button>
+                      )}
+                    </div>
                   </div>
                 ))}
               </div>
@@ -435,7 +467,7 @@ export default function Admin(): React.ReactElement {
             {/* Item grid */}
             <div>
               <p className="text-[13px] text-text-muted mb-4">Select one or more items to include in the payment link. Click an item to select or deselect it.</p>
-              <div className="grid grid-cols-3 mob:grid-cols-1 gap-4">
+              <div className="grid grid-cols-3 mob:grid-cols-2 gap-3">
                 {RENTAL_ITEMS.map((ri) => {
                   const selected = selectedKeys.includes(ri.key)
                   return (
@@ -576,6 +608,50 @@ export default function Admin(): React.ReactElement {
               </div>
             )}
 
+          </div>
+        )}
+
+        {/* ── Item Prices Tab ── */}
+        {tab === 'prices' && (
+          <div className="flex flex-col gap-4">
+            <p className="text-[13px] text-text-muted">Edit item prices below. Changes save automatically when you click away.</p>
+            {pricesLoading ? (
+              <p className="text-[14px] text-text-muted">Loading prices…</p>
+            ) : (
+              <div className="flex flex-col gap-3">
+                {RENTAL_ITEMS.map((ri) => {
+                  const ip = itemPrices.find((p) => p.name === ri.name)
+                  if (!ip) return null
+                  const isSaving = priceSaving === ip.id
+                  const isSaved  = priceSaved  === ip.id
+                  return (
+                    <div key={ri.key} className="bg-white rounded-[14px] border border-border-col px-4 py-3 flex items-center gap-4">
+                      <img src={ri.images[0]} alt={ri.name} className="w-12 h-12 rounded-[8px] object-cover flex-shrink-0" />
+                      <div className="flex-1">
+                        <p className="text-[13px] font-semibold text-text-dark">{ri.name}</p>
+                        <p className="text-[11px] text-text-muted">{ri.unit === 'chair' ? 'per chair' : 'flat rate'}</p>
+                      </div>
+                      <div className="flex items-center gap-2 flex-shrink-0">
+                        <div className="relative">
+                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted font-semibold text-[13px]">$</span>
+                          <input
+                            type="number"
+                            min="1"
+                            value={localPrices[ip.id] ?? ''}
+                            onChange={(e) => setLocalPrices((prev) => ({ ...prev, [ip.id]: e.target.value }))}
+                            onBlur={() => void handlePriceSave(ip.id)}
+                            className="w-24 border border-border-col rounded-[8px] pl-6 pr-2 py-2 text-[13px] text-text-dark outline-none focus:border-gold bg-white"
+                          />
+                        </div>
+                        <span className="text-[12px] w-14 text-center font-semibold">
+                          {isSaving ? <span className="text-text-muted">Saving…</span> : isSaved ? <span className="text-green-600">Saved ✓</span> : null}
+                        </span>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
           </div>
         )}
 

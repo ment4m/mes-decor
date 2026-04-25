@@ -1,5 +1,6 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { RENTAL_ITEMS } from './Experience'
+import { fetchItemPrices } from '../lib/airtable'
 
 const ORS_KEY         = import.meta.env.VITE_ORS_KEY as string
 const BUSINESS_LNG    = -96.6989
@@ -91,6 +92,17 @@ export default function PayPage(): React.ReactElement {
   const [deliveryErr,   setDeliveryErr]   = useState<string>('')
   const [calculating,   setCalculating]   = useState<boolean>(false)
   const [loading,       setLoading]       = useState<boolean>(false)
+  const [dynamicItems,  setDynamicItems]  = useState(RENTAL_ITEMS)
+
+  useEffect(() => {
+    fetchItemPrices().then((prices) => {
+      if (!prices.length) return
+      setDynamicItems(RENTAL_ITEMS.map((ri) => {
+        const match = prices.find((p) => p.name === ri.name)
+        return match ? { ...ri, fullPrice: match.price } : ri
+      }))
+    }).catch(() => {})
+  }, [])
   const [error,         setError]         = useState<string>('')
 
   const rentalPrice   = totalParam ?? 0
@@ -156,7 +168,7 @@ export default function PayPage(): React.ReactElement {
           <div className={`grid gap-3 ${images.length === 1 ? 'grid-cols-1' : 'grid-cols-2'}`}>
             {images.map((src, i) => {
               const itemName   = items[i] ?? ''
-              const rentalItem = RENTAL_ITEMS.find((r) => r.name === itemName)
+              const rentalItem = dynamicItems.find((r) => r.name === itemName)
               const priceLabel = rentalItem
                 ? rentalItem.unit === 'chair'
                   ? `$${rentalItem.fullPrice}/chair`

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react'
+import { fetchItemPrices } from '../lib/airtable'
 
 export type ItemKey = 'serpentine-table' | 'chiavari-chairs' | 'grad-marquee' | 'velvet-loveseat' | 'backdrop-stand' | 'cylinder-pedestals' | 'gold-geo-stands' | 'gold-cocktail-tables' | 'white-box-pedestals'
 export type PaymentType = 'full' | 'deposit'
@@ -123,7 +124,7 @@ function Lightbox({ item, onClose }: { item: ExperienceItem; onClose: () => void
 }
 
 // ── Payment Panel ────────────────────────────────────────────
-export function PaymentPanel({ item, onClose }: { item: ExperienceItem; onClose: () => void }): React.ReactElement {
+export function PaymentPanel({ item, onClose, allItems = RENTAL_ITEMS }: { item: ExperienceItem; onClose: () => void; allItems?: ExperienceItem[] }): React.ReactElement {
   const minQty = item.minQty ?? 1
 
   // Main item qty
@@ -138,7 +139,7 @@ export function PaymentPanel({ item, onClose }: { item: ExperienceItem; onClose:
   const [calculating,  setCalculating]  = useState<boolean>(false)
   const [loading,       setLoading]       = useState<boolean>(false)
 
-  const otherItems = ITEMS.filter((i) => i.key !== item.key)
+  const otherItems = allItems.filter((i) => i.key !== item.key)
 
   const rentalTotal = item.fullPrice * qty
     + otherItems.reduce((sum, i) => sum + (extras[i.key] ? i.fullPrice * (extras[i.key] as number) : 0), 0)
@@ -390,6 +391,7 @@ export default function Experience(): React.ReactElement {
   const [payItem,      setPayItem]      = useState<ExperienceItem | null>(null)
   const [showAll,      setShowAll]      = useState<boolean>(false)
   const [isMobile,     setIsMobile]     = useState<boolean>(window.innerWidth < 768)
+  const [dynamicItems, setDynamicItems] = useState<ExperienceItem[]>(RENTAL_ITEMS)
 
   useEffect(() => {
     const onResize = (): void => {
@@ -400,8 +402,18 @@ export default function Experience(): React.ReactElement {
     return () => window.removeEventListener('resize', onResize)
   }, [])
 
+  useEffect(() => {
+    fetchItemPrices().then((prices) => {
+      if (!prices.length) return
+      setDynamicItems(RENTAL_ITEMS.map((ri) => {
+        const match = prices.find((p) => p.name === ri.name)
+        return match ? { ...ri, fullPrice: match.price } : ri
+      }))
+    }).catch(() => { /* fallback to hardcoded */ })
+  }, [])
+
   const LIMIT        = isMobile ? 4 : 9
-  const visibleItems = showAll ? ITEMS : ITEMS.slice(0, LIMIT)
+  const visibleItems = showAll ? dynamicItems : dynamicItems.slice(0, LIMIT)
 
   return (
     <>
@@ -450,7 +462,7 @@ export default function Experience(): React.ReactElement {
           ))}
         </div>
 
-        {ITEMS.length > LIMIT && (
+        {dynamicItems.length > LIMIT && (
           <button
             onClick={() => setShowAll((p) => !p)}
             className="mt-10 px-8 py-3 rounded-pill border border-gold text-gold font-semibold text-[14px] bg-transparent cursor-pointer hover:bg-gold hover:text-off-white transition-colors"
@@ -461,7 +473,7 @@ export default function Experience(): React.ReactElement {
       </section>
 
       {lightboxItem && <Lightbox item={lightboxItem} onClose={() => setLightboxItem(null)} />}
-      {payItem      && <PaymentPanel item={payItem}  onClose={() => setPayItem(null)} />}
+      {payItem      && <PaymentPanel item={payItem}  onClose={() => setPayItem(null)} allItems={dynamicItems} />}
     </>
   )
 }
