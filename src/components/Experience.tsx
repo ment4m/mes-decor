@@ -18,7 +18,7 @@ export interface ExperienceItem {
 export const RENTAL_ITEMS: ExperienceItem[] = [
   { id: 1, key: 'serpentine-table',    name: 'Serpentine Table',        images: ['/rental/rental1.jpg'], fullPrice: 300, unit: 'item',  maxQty: 1  },
   { id: 2, key: 'chiavari-chairs',     name: 'Chiavari Chairs',         images: ['/rental/rental2.jpg'], fullPrice: 5,   unit: 'chair', maxQty: 40, minQty: 10 },
-  { id: 3, key: 'grad-marquee',        name: 'Grad Marquee Letters',    images: ['/rental/rental3.jpg'], fullPrice: 200, unit: 'item',  maxQty: 1  },
+  { id: 3, key: 'grad-marquee',        name: 'Grad Marquee Letters',    images: ['/rental/rental3.jpg'], fullPrice: 150, unit: 'item',  maxQty: 1  },
   { id: 4, key: 'velvet-loveseat',     name: 'Velvet Loveseat',         images: ['/rental/rental4.png'], fullPrice: 75,  unit: 'item',  maxQty: 1  },
   { id: 5, key: 'backdrop-stand',      name: 'Backdrop Stand',          images: ['/rental/rental5.png'], fullPrice: 50,  unit: 'item',  maxQty: 1  },
   { id: 6, key: 'cylinder-pedestals',  name: 'Cylinder Pedestals',      images: ['/rental/rental6.png'], fullPrice: 100, unit: 'item',  maxQty: 1  },
