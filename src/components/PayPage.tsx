@@ -112,8 +112,9 @@ export default function PayPage(): React.ReactElement {
   const grandTotal    = rentalPrice + deliveryFee
   const deliveryReady = deliveryType === 'pickup'
                         || (address.trim() !== '' && zipCode.trim() !== '' && deliveryInfo !== null)
-  const canPay        = date.trim() !== '' && time.trim() !== '' && location.trim() !== ''
-                        && (isBalanceMode || deliveryReady)
+  const canPay        = isBalanceMode
+                        ? true
+                        : date.trim() !== '' && time.trim() !== '' && location.trim() !== '' && deliveryReady
 
   const handleCalcDelivery = async (): Promise<void> => {
     if (!address.trim() && !zipCode.trim()) return
@@ -215,7 +216,9 @@ export default function PayPage(): React.ReactElement {
 
         {/* Event details */}
         <div className="flex flex-col gap-3">
-          <p className="text-[12px] font-bold text-text-muted uppercase tracking-wider">Event Details</p>
+          <p className="text-[12px] font-bold text-text-muted uppercase tracking-wider">
+            {isBalanceMode ? 'Your Name' : 'Event Details'}
+          </p>
 
           <div>
             <label className="text-[12px] text-text-muted block mb-1">Your Name</label>
@@ -223,28 +226,32 @@ export default function PayPage(): React.ReactElement {
               onChange={(e) => setClientName(e.target.value)} className={inputClass} />
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="text-[12px] text-text-muted block mb-1">Date *</label>
-              <input type="date" value={date}
-                min={new Date().toISOString().split('T')[0]}
-                onChange={(e) => setDate(e.target.value)} className={inputClass} />
-            </div>
-            <div>
-              <label className="text-[12px] text-text-muted block mb-1">Time *</label>
-              <input type="time" value={time}
-                min={date === new Date().toISOString().split('T')[0]
-                  ? `${String(new Date().getHours()).padStart(2,'0')}:${String(new Date().getMinutes()).padStart(2,'0')}`
-                  : undefined}
-                onChange={(e) => setTime(e.target.value)} className={inputClass} />
-            </div>
-          </div>
+          {!isBalanceMode && (
+            <>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-[12px] text-text-muted block mb-1">Date *</label>
+                  <input type="date" value={date}
+                    min={new Date().toISOString().split('T')[0]}
+                    onChange={(e) => setDate(e.target.value)} className={inputClass} />
+                </div>
+                <div>
+                  <label className="text-[12px] text-text-muted block mb-1">Time *</label>
+                  <input type="time" value={time}
+                    min={date === new Date().toISOString().split('T')[0]
+                      ? `${String(new Date().getHours()).padStart(2,'0')}:${String(new Date().getMinutes()).padStart(2,'0')}`
+                      : undefined}
+                    onChange={(e) => setTime(e.target.value)} className={inputClass} />
+                </div>
+              </div>
 
-          <div>
-            <label className="text-[12px] text-text-muted block mb-1">Location / Venue *</label>
-            <input type="text" placeholder="Venue name or address" value={location}
-              onChange={(e) => setLocation(e.target.value)} className={inputClass} />
-          </div>
+              <div>
+                <label className="text-[12px] text-text-muted block mb-1">Location / Venue *</label>
+                <input type="text" placeholder="Venue name or address" value={location}
+                  onChange={(e) => setLocation(e.target.value)} className={inputClass} />
+              </div>
+            </>
+          )}
         </div>
 
         {/* Pickup or Delivery — hidden in balance mode */}
@@ -339,7 +346,7 @@ export default function PayPage(): React.ReactElement {
               disabled={loading || !canPay}
               className="w-full py-3 rounded-pill bg-gold text-off-white font-semibold text-[14px] border-none cursor-pointer hover:bg-gold-dark transition-colors disabled:opacity-50"
             >
-              {loading ? 'Redirecting…' : `Pay Remaining Balance — $${amountParam}`}
+              {loading ? 'Redirecting…' : 'Pay Remaining Balance'}
             </button>
           ) : (
             <>
