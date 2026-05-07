@@ -12,6 +12,7 @@ import PaymentSuccess from './components/PaymentSuccess'
 import Admin          from './components/Admin'
 import PayPage        from './components/PayPage'
 import ReviewPage     from './components/ReviewPage'
+import Packages      from './components/Packages'
 
 const path = window.location.pathname
 
@@ -19,6 +20,7 @@ export default function App() {
   if (path === '/payment-success') return <PaymentSuccess />
   if (path === '/admin')           return <Admin />
   if (path === '/pay')             return <PayPage />
+  if (path === '/packages')        return <Packages />
 
   if (path === '/review') return <ReviewPage />
 

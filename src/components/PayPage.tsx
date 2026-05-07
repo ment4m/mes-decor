@@ -20,7 +20,7 @@ function cleanAddress(raw: string): string {
     .trim()
 }
 
-async function calcDelivery(address: string): Promise<{ fee: number; miles: number } | { error: string }> {
+async function calcDelivery(address: string, freeWithinMiles = 0): Promise<{ fee: number; miles: number } | { error: string }> {
   try {
     const cleaned = cleanAddress(address)
     const geoRes  = await fetch(
@@ -39,6 +39,11 @@ async function calcDelivery(address: string): Promise<{ fee: number; miles: numb
 
     const oneWayMiles = meters / 1609.34
     if (oneWayMiles > MAX_DELIVERY_MI) return { error: `Sorry, we only deliver within ${MAX_DELIVERY_MI} miles. You are ${Math.round(oneWayMiles)} miles away.` }
+
+    // Free within threshold (e.g. packages get first 10 miles free)
+    if (freeWithinMiles > 0 && oneWayMiles <= freeWithinMiles) {
+      return { fee: 0, miles: Math.round(oneWayMiles * 10) / 10 }
+    }
 
     // 2 round trips: deliver items + pick up items
     const totalMiles = oneWayMiles * 4
@@ -78,8 +83,9 @@ export default function PayPage(): React.ReactElement {
   const params     = new URLSearchParams(window.location.search)
   const items      = params.getAll('item')
   const images     = params.getAll('image')
-  const totalParam   = params.get('total')  ? Number(params.get('total'))  : null
-  const amountParam  = params.get('amount') ? Number(params.get('amount')) : null
+  const totalParam          = params.get('total')             ? Number(params.get('total'))             : null
+  const amountParam         = params.get('amount')            ? Number(params.get('amount'))            : null
+  const freeDeliveryMiles   = params.get('freeDeliveryMiles') ? Number(params.get('freeDeliveryMiles')) : 0
   const noteParam    = params.get('note')   ?? ''
 
   const [clientName,    setClientName]    = useState<string>('')
@@ -121,7 +127,7 @@ export default function PayPage(): React.ReactElement {
     setCalculating(true)
     setDeliveryErr('')
     setDeliveryInfo(null)
-    const result = await calcDelivery(`${address.trim()}, ${zipCode.trim()}`)
+    const result = await calcDelivery(`${address.trim()}, ${zipCode.trim()}`, freeDeliveryMiles)
     if ('error' in result) setDeliveryErr(result.error)
     else setDeliveryInfo(result)
     setCalculating(false)
@@ -287,11 +293,15 @@ export default function PayPage(): React.ReactElement {
                 {deliveryErr  && <p className="text-red-500 text-[12px]">{deliveryErr}</p>}
                 {deliveryInfo && (
                   <p className="text-[12px] text-green-600 font-semibold">
-                    {deliveryInfo.miles} mi away · 2 round trips · Delivery fee: ${deliveryInfo.fee}
+                    {deliveryInfo.miles} mi away · 2 round trips · Delivery fee: {deliveryInfo.fee === 0 ? 'Free' : `$${deliveryInfo.fee}`}
                   </p>
                 )}
                 {!deliveryInfo && !deliveryErr && (
-                  <p className="text-[11px] text-text-muted">Rate: $0.75/mile · 2 round trips (delivery + pickup) · Max {MAX_DELIVERY_MI} miles</p>
+                  <p className="text-[11px] text-text-muted">
+                    {freeDeliveryMiles > 0
+                      ? `Free within ${freeDeliveryMiles} miles · Beyond that: $0.75/mile · 2 round trips · Max ${MAX_DELIVERY_MI} miles`
+                      : `Rate: $0.75/mile · 2 round trips (delivery + pickup) · Max ${MAX_DELIVERY_MI} miles`}
+                  </p>
                 )}
               </div>
             )}
