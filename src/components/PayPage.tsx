@@ -157,7 +157,7 @@ export default function PayPage(): React.ReactElement {
     }
   }
 
-  const inputClass = 'w-full border border-border-col rounded-[10px] px-3 py-2.5 text-[14px] text-text-dark outline-none focus:border-gold bg-white transition-colors'
+  const inputClass = 'w-full min-w-0 border border-border-col rounded-[10px] px-3 py-2.5 text-[14px] mob:text-[16px] text-text-dark outline-none focus:border-gold bg-white transition-colors'
 
   return (
     <div className="min-h-screen bg-cream flex flex-col items-center justify-center px-4 mob:px-3 py-12">
@@ -174,7 +174,7 @@ export default function PayPage(): React.ReactElement {
         <p className="text-text-muted text-[14px] mt-1">Secure payment powered by Stripe</p>
       </div>
 
-      <div className="w-full max-w-[460px] bg-white rounded-[20px] shadow-sm border border-border-col px-6 mob:px-4 py-7 flex flex-col gap-5">
+      <div className="w-full max-w-[460px] bg-white rounded-[20px] shadow-sm border border-border-col px-6 mob:px-4 py-7 flex flex-col gap-5 overflow-hidden">
 
         {/* Item images grid */}
         {images.length > 0 && (
@@ -235,13 +235,13 @@ export default function PayPage(): React.ReactElement {
           {!isBalanceMode && (
             <>
               <div className="grid grid-cols-2 mob:grid-cols-1 gap-3">
-                <div>
+                <div className="min-w-0">
                   <label className="text-[12px] text-text-muted block mb-1">Date *</label>
                   <input type="date" value={date}
                     min={new Date().toISOString().split('T')[0]}
                     onChange={(e) => setDate(e.target.value)} className={inputClass} />
                 </div>
-                <div>
+                <div className="min-w-0">
                   <label className="text-[12px] text-text-muted block mb-1">Time *</label>
                   <input type="time" value={time}
                     min={date === new Date().toISOString().split('T')[0]
