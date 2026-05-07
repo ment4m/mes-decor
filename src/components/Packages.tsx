@@ -1,4 +1,5 @@
-import React from 'react'
+import React, { useState, useEffect } from 'react'
+import { fetchSetting } from '../lib/airtable'
 
 interface Package {
   id:       number
@@ -84,10 +85,16 @@ const PACKAGES: Package[] = [
 ]
 
 export default function Packages(): React.ReactElement {
+  const [showPrices, setShowPrices] = useState(true)
+
+  useEffect(() => {
+    fetchSetting('__show_package_prices').then(setShowPrices).catch(() => {})
+  }, [])
+
   const handleBook = (pkg: Package): void => {
     const p = new URLSearchParams({
       total:             String(pkg.price),
-      item:              `$${pkg.price} Package`,
+      item:              showPrices ? `$${pkg.price} Package` : 'Package',
       image:             pkg.image,
       freeDeliveryMiles: '10',
     })
@@ -136,9 +143,11 @@ export default function Packages(): React.ReactElement {
               )}
 
               {/* Price */}
-              <div className="absolute bottom-0 left-0 right-0 px-4 pb-3 z-10">
-                <p className="text-gold text-[32px] mob:text-[20px] font-bold leading-none drop-shadow-sm">${pkg.price}</p>
-              </div>
+              {showPrices && (
+                <div className="absolute bottom-0 left-0 right-0 px-4 pb-3 z-10">
+                  <p className="text-gold text-[32px] mob:text-[20px] font-bold leading-none drop-shadow-sm">${pkg.price}</p>
+                </div>
+              )}
             </div>
 
             {/* Content — 40% width on mobile */}

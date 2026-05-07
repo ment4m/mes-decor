@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { fetchAllBookings, updateBookingStatus, deleteBooking, createBooking, fetchAllReviews, updateReviewStatus, updateReviewImage, fetchItemPrices, updateItemPrice, createItemRecord, type Booking, type BookingStatus, type Review, type ItemPrice } from '../lib/airtable'
+import { fetchAllBookings, updateBookingStatus, deleteBooking, createBooking, fetchAllReviews, updateReviewStatus, updateReviewImage, fetchItemPrices, updateItemPrice, createItemRecord, fetchSetting, updateSetting, type Booking, type BookingStatus, type Review, type ItemPrice } from '../lib/airtable'
 import { RENTAL_ITEMS } from './Experience'
 
 const STATUS_COLORS: Record<BookingStatus | 'Completed', string> = {
@@ -67,6 +67,9 @@ export default function Admin(): React.ReactElement {
   const [reviewLinkCopied,  setReviewLinkCopied]  = useState(false)
   const [balanceAmount,     setBalanceAmount]     = useState<string>('')
   const [balanceCopied,     setBalanceCopied]     = useState(false)
+
+  const [showPackagePrices,    setShowPackagePrices]    = useState<boolean>(true)
+  const [priceToggleSaving,    setPriceToggleSaving]    = useState(false)
 
   const toggleItemKey = (key: string): void => {
     setSelectedKeys((prev) => {
@@ -194,7 +197,16 @@ export default function Admin(): React.ReactElement {
       all.forEach((ip) => { map[ip.id] = String(ip.price) })
       setLocalPrices(map)
     }).finally(() => setPricesLoading(false))
+    fetchSetting('__show_package_prices').then(setShowPackagePrices).catch(() => {})
   }, [authed, tab])
+
+  const handlePriceToggle = async (): Promise<void> => {
+    const next = !showPackagePrices
+    setShowPackagePrices(next)
+    setPriceToggleSaving(true)
+    await updateSetting('__show_package_prices', next).catch(() => {})
+    setPriceToggleSaving(false)
+  }
 
   const [reviewError, setReviewError] = useState<string>('')
 
@@ -680,6 +692,21 @@ export default function Admin(): React.ReactElement {
         {tab === 'prices' && (
           <div className="flex flex-col gap-4">
             <p className="text-[13px] text-text-muted">Edit item prices below. Changes save automatically when you click away.</p>
+
+            {/* Package price toggle */}
+            <div className="bg-white rounded-[14px] border border-border-col px-4 py-3 flex items-center justify-between gap-3">
+              <div>
+                <p className="text-[13px] font-semibold text-text-dark">Show Prices on Packages Page</p>
+                <p className="text-[11px] text-text-muted">{showPackagePrices ? 'Prices are visible to customers' : 'Prices are hidden from customers'}</p>
+              </div>
+              <button
+                onClick={() => void handlePriceToggle()}
+                disabled={priceToggleSaving}
+                className={`relative w-12 h-6 rounded-full transition-colors cursor-pointer border-none flex-shrink-0 ${showPackagePrices ? 'bg-gold' : 'bg-gray-300'} disabled:opacity-50`}
+              >
+                <span className={`absolute top-[3px] w-[18px] h-[18px] bg-white rounded-full shadow transition-all ${showPackagePrices ? 'left-[26px]' : 'left-[3px]'}`} />
+              </button>
+            </div>
             {pricesLoading ? (
               <p className="text-[14px] text-text-muted">Loading prices…</p>
             ) : (

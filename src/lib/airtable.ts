@@ -199,6 +199,38 @@ export async function createItemRecord(name: string, price: number): Promise<Ite
   return { id: json.id, name, price }
 }
 
+// ── Settings ─────────────────────────────────────────────────
+// Stored as special records in Items table: Name = "__key", Price = "0" or "1"
+
+export async function fetchSetting(key: string): Promise<boolean> {
+  const url = `${ITEMS_URL}?filterByFormula=${encodeURIComponent(`{Name}="${key}"`)}`
+  const res  = await fetch(url, { headers })
+  const json = await res.json()
+  const record = (json.records ?? [])[0]
+  return record ? Number(record.fields.Price) === 1 : true // default true
+}
+
+export async function updateSetting(key: string, value: boolean): Promise<void> {
+  // Find existing record
+  const url = `${ITEMS_URL}?filterByFormula=${encodeURIComponent(`{Name}="${key}"`)}`
+  const res  = await fetch(url, { headers })
+  const json = await res.json()
+  const record = (json.records ?? [])[0]
+  if (record) {
+    await fetch(`${ITEMS_URL}/${record.id}`, {
+      method:  'PATCH',
+      headers,
+      body:    JSON.stringify({ fields: { Price: value ? '1' : '0' } }),
+    })
+  } else {
+    await fetch(ITEMS_URL, {
+      method:  'POST',
+      headers,
+      body:    JSON.stringify({ fields: { Name: key, Price: value ? '1' : '0' } }),
+    })
+  }
+}
+
 // Create a booking manually (admin)
 export async function createBooking(data: BookingData & { status: BookingStatus }): Promise<Booking> {
   const res  = await fetch(API_URL, {
