@@ -61,7 +61,7 @@ const PACKAGES: Package[] = [
   },
   {
     id:    6,
-    price: 270,
+    price: 290,
     image: '/packages/packages6.jpg',
     includes: [
       'Custom Vinyl Print',
@@ -72,7 +72,7 @@ const PACKAGES: Package[] = [
   },
   {
     id:    7,
-    price: 290,
+    price: 270,
     image: '/packages/packages7.jpg',
     includes: [
       'Custom Vinyl Print',
@@ -119,8 +119,8 @@ export default function Packages(): React.ReactElement {
             key={pkg.id}
             className="bg-white rounded-[20px] border border-border-col overflow-hidden shadow-sm flex flex-col mob:flex-row"
           >
-            {/* Image */}
-            <div className="relative mob:w-[140px] mob:flex-shrink-0">
+            {/* Image — 60% width on mobile */}
+            <div className="relative mob:w-[60%] mob:flex-shrink-0">
               <img
                 src={pkg.image}
                 alt={`Package $${pkg.price}`}
@@ -135,17 +135,17 @@ export default function Packages(): React.ReactElement {
                 </span>
               )}
 
-              {/* Price — bottom on desktop, bottom-left on mobile */}
+              {/* Price */}
               <div className="absolute bottom-0 left-0 right-0 px-4 pb-3 z-10">
-                <p className="text-gold text-[32px] mob:text-[24px] font-bold leading-none drop-shadow-sm">${pkg.price}</p>
+                <p className="text-gold text-[32px] mob:text-[20px] font-bold leading-none drop-shadow-sm">${pkg.price}</p>
               </div>
             </div>
 
-            {/* Content */}
-            <div className="px-4 py-4 flex flex-col gap-3 flex-1">
+            {/* Content — 40% width on mobile */}
+            <div className="px-4 py-4 mob:px-3 mob:py-3 flex flex-col gap-3 flex-1">
               <ul className="flex flex-col gap-1.5 flex-1">
                 {pkg.includes.map((item, i) => (
-                  <li key={i} className="flex items-start gap-2 text-[13px] mob:text-[12px] text-text-mid">
+                  <li key={i} className="flex items-start gap-2 text-[13px] mob:text-[11px] text-text-mid">
                     <span className="text-gold mt-[1px] flex-shrink-0">✓</span>
                     <span>{item}</span>
                   </li>
@@ -154,7 +154,7 @@ export default function Packages(): React.ReactElement {
 
               <button
                 onClick={() => handleBook(pkg)}
-                className="w-full py-2.5 mob:py-2 rounded-pill bg-gold text-off-white font-semibold text-[13px] mob:text-[12px] border-none cursor-pointer hover:bg-gold-dark transition-colors"
+                className="w-full py-2.5 mob:py-2 rounded-pill bg-gold text-off-white font-semibold text-[13px] mob:text-[11px] border-none cursor-pointer hover:bg-gold-dark transition-colors"
               >
                 Book This Package
               </button>

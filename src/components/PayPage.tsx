@@ -92,7 +92,7 @@ export default function PayPage(): React.ReactElement {
   const [date,          setDate]          = useState<string>(params.get('date') ?? '')
   const [time,          setTime]          = useState<string>(params.get('time') ?? '')
   const [location,      setLocation]      = useState<string>(params.get('location') ?? '')
-  const [deliveryType,  setDeliveryType]  = useState<'pickup' | 'delivery'>('pickup')
+  const [deliveryType,  setDeliveryType]  = useState<'pickup' | 'delivery'>(freeDeliveryMiles > 0 ? 'delivery' : 'pickup')
   const [address,       setAddress]       = useState<string>('')
   const [zipCode,       setZipCode]       = useState<string>('')
   const [deliveryInfo,  setDeliveryInfo]  = useState<{ fee: number; miles: number } | null>(null)
@@ -234,7 +234,7 @@ export default function PayPage(): React.ReactElement {
 
           {!isBalanceMode && (
             <>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-2 mob:grid-cols-1 gap-3">
                 <div>
                   <label className="text-[12px] text-text-muted block mb-1">Date *</label>
                   <input type="date" value={date}
@@ -263,17 +263,19 @@ export default function PayPage(): React.ReactElement {
         {/* Pickup or Delivery — hidden in balance mode */}
         {!isBalanceMode && (
           <div>
-            <p className="text-[12px] font-bold text-text-muted uppercase tracking-wider mb-2">Pickup or Delivery</p>
-            <div className="flex gap-3 mb-3">
-              <button
-                className={`flex-1 py-2.5 rounded-[10px] border text-[13px] font-semibold transition-colors cursor-pointer ${deliveryType === 'pickup' ? 'bg-dark border-dark text-off-white' : 'bg-white border-border-col text-text-dark hover:border-gold'}`}
-                onClick={() => switchDelivery('pickup')}
-              >Pickup</button>
-              <button
-                className={`flex-1 py-2.5 rounded-[10px] border text-[13px] font-semibold transition-colors cursor-pointer ${deliveryType === 'delivery' ? 'bg-dark border-dark text-off-white' : 'bg-white border-border-col text-text-dark hover:border-gold'}`}
-                onClick={() => switchDelivery('delivery')}
-              >Delivery</button>
-            </div>
+            <p className="text-[12px] font-bold text-text-muted uppercase tracking-wider mb-2">Delivery</p>
+            {!freeDeliveryMiles && (
+              <div className="flex gap-3 mb-3">
+                <button
+                  className={`flex-1 py-2.5 rounded-[10px] border text-[13px] font-semibold transition-colors cursor-pointer ${deliveryType === 'pickup' ? 'bg-dark border-dark text-off-white' : 'bg-white border-border-col text-text-dark hover:border-gold'}`}
+                  onClick={() => switchDelivery('pickup')}
+                >Pickup</button>
+                <button
+                  className={`flex-1 py-2.5 rounded-[10px] border text-[13px] font-semibold transition-colors cursor-pointer ${deliveryType === 'delivery' ? 'bg-dark border-dark text-off-white' : 'bg-white border-border-col text-text-dark hover:border-gold'}`}
+                  onClick={() => switchDelivery('delivery')}
+                >Delivery</button>
+              </div>
+            )}
             {deliveryType === 'pickup' && (
               <p className="text-[12px] text-text-muted">You will pick up and return the items yourself.</p>
             )}
