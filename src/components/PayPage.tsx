@@ -174,7 +174,7 @@ export default function PayPage(): React.ReactElement {
         <p className="text-text-muted text-[14px] mt-1">Secure payment powered by Stripe</p>
       </div>
 
-      <div className="w-full max-w-[460px] bg-white rounded-[20px] shadow-sm border border-border-col px-6 mob:px-4 py-7 flex flex-col gap-5 overflow-hidden">
+      <div className="w-full max-w-[460px] bg-white rounded-[20px] shadow-sm border border-border-col px-6 mob:px-4 py-7 flex flex-col gap-5">
 
         {/* Item images grid */}
         {images.length > 0 && (
