@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import { fetchItemPrices } from '../lib/airtable'
 
-export type ItemKey = 'serpentine-table' | 'chiavari-chairs' | 'grad-marquee' | 'velvet-loveseat' | 'backdrop-stand' | 'cylinder-pedestals' | 'gold-geo-stands' | 'gold-cocktail-tables' | 'white-box-pedestals'
+export type ItemKey = 'serpentine-table' | 'chiavari-chairs' | 'grad-marquee' | 'velvet-loveseat' | 'backdrop-stand' | 'cylinder-pedestals' | 'gold-geo-stands' | 'gold-cocktail-tables' | 'white-box-pedestals' | 'wave-drape-set'
 export type PaymentType = 'full' | 'deposit'
 type DeliveryType = 'pickup' | 'delivery'
 
@@ -26,6 +26,7 @@ export const RENTAL_ITEMS: ExperienceItem[] = [
   { id: 7, key: 'gold-geo-stands',     name: 'Gold Geometric Stands',   images: ['/rental/rental7.png'], fullPrice: 60,  unit: 'item',  maxQty: 1  },
   { id: 8, key: 'gold-cocktail-tables',name: 'Gold Cocktail Tables',    images: ['/rental/rental8.png'], fullPrice: 60,  unit: 'item',  maxQty: 1  },
   { id: 9, key: 'white-box-pedestals', name: 'White Box Pedestals',     images: ['/rental/rental9.png'], fullPrice: 60,  unit: 'item',  maxQty: 1  },
+  { id: 10, key: 'wave-drape-set',     name: 'Wave-Shaped Stand Set with Ivory Drape Set', images: ['/rental/rental10.jpg'], fullPrice: 200, unit: 'item', maxQty: 1 },
 ]
 
 const ITEMS = RENTAL_ITEMS
