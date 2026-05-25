@@ -35,7 +35,7 @@ const ITEMS = RENTAL_ITEMS
 const ORS_KEY          = import.meta.env.VITE_ORS_KEY as string
 const BUSINESS_LNG     = -96.6989
 const BUSINESS_LAT     = 33.0198
-const MAX_DELIVERY_MI  = 50
+const MAX_DELIVERY_MI  = 100
 const RATE_PER_MILE    = 0.75
 
 async function calcDelivery(address: string): Promise<{ fee: number; miles: number } | { error: string }> {
