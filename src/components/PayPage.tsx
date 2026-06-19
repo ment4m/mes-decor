@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { RENTAL_ITEMS } from './Experience'
+import { RENTAL_ITEMS, mergeAirtableItems } from './Experience'
 import { fetchItemPrices } from '../lib/airtable'
 
 const ORS_KEY         = import.meta.env.VITE_ORS_KEY as string
@@ -104,10 +104,7 @@ export default function PayPage(): React.ReactElement {
   useEffect(() => {
     fetchItemPrices().then((prices) => {
       if (!prices.length) return
-      setDynamicItems(RENTAL_ITEMS.map((ri) => {
-        const match = prices.find((p) => p.name === ri.name)
-        return match ? { ...ri, fullPrice: match.price } : ri
-      }))
+      setDynamicItems(mergeAirtableItems(RENTAL_ITEMS, prices))
     }).catch(() => {})
   }, [])
   const [error,         setError]         = useState<string>('')

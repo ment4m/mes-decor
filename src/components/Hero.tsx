@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react'
 import { WhatsApp, Instagram } from './icons'
 import DateTimePicker from './DateTimePicker'
 import { submitBooking, fetchReservedDates } from '../lib/airtable'
-import { PaymentPanel, RENTAL_ITEMS, type ExperienceItem } from './Experience'
+import { PaymentPanel, RENTAL_ITEMS, mergeAirtableItems, type ExperienceItem } from './Experience'
+import { fetchItemPrices } from '../lib/airtable'
 
 // ── Types ──────────────────────────────────────────────────
 interface SocialLink {
@@ -63,6 +64,7 @@ export default function Hero(): React.ReactElement {
   const [errors,         setErrors]         = useState<Partial<Record<keyof BookingForm, string>>>({})
   const [rentalItem,     setRentalItem]     = useState<ExperienceItem | null>(null)
   const [payItem,        setPayItem]        = useState<ExperienceItem | null>(null)
+  const [dynamicItems,   setDynamicItems]   = useState<ExperienceItem[]>(RENTAL_ITEMS)
   const [form, setForm] = useState<BookingForm>({
     fullName: '', phone: '',
     time: '09:00', date: '',
@@ -75,6 +77,12 @@ export default function Hero(): React.ReactElement {
       setCurrentSlide((prev) => (prev + 1) % HERO_IMAGES.length)
     }, 5000)
     return () => clearInterval(timer)
+  }, [])
+
+  useEffect(() => {
+    fetchItemPrices().then((prices) => {
+      if (prices.length) setDynamicItems(mergeAirtableItems(RENTAL_ITEMS, prices))
+    }).catch(() => {})
   }, [])
 
   // Pre-select event category when triggered from Fleet gallery
@@ -249,11 +257,11 @@ export default function Hero(): React.ReactElement {
               <label className={labelCls}>Select Rental Item*</label>
               <select
                 value={rentalItem?.key ?? ''}
-                onChange={(e) => setRentalItem(RENTAL_ITEMS.find((i) => i.key === e.target.value) ?? null)}
+                onChange={(e) => setRentalItem(dynamicItems.find((i) => i.key === e.target.value) ?? null)}
                 className={inputCls}
               >
                 <option value="">Select item</option>
-                {RENTAL_ITEMS.map((i) => (
+                {dynamicItems.map((i) => (
                   <option key={i.key} value={i.key}>{i.name}</option>
                 ))}
               </select>

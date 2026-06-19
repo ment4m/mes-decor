@@ -166,18 +166,22 @@ export async function submitReview(data: { name: string; rating: number; comment
 // ── Item Prices ───────────────────────────────────────────────
 
 export interface ItemPrice {
-  id:    string
-  name:  string
-  price: number
+  id:      string
+  name:    string
+  price:   number
+  image?:  string
+  maxQty?: number
 }
 
 export async function fetchItemPrices(): Promise<ItemPrice[]> {
   const res  = await fetch(ITEMS_URL, { headers })
   const json = await res.json()
   return (json.records ?? []).map((r: { id: string; fields: Record<string, string> }) => ({
-    id:    r.id,
-    name:  r.fields.Name  ?? '',
-    price: Number(r.fields.Price) || 0,
+    id:     r.id,
+    name:   r.fields.Name   ?? '',
+    price:  Number(r.fields.Price) || 0,
+    image:  r.fields.Image  || undefined,
+    maxQty: r.fields.MaxQty ? Number(r.fields.MaxQty) : undefined,
   }))
 }
 
@@ -189,14 +193,21 @@ export async function updateItemPrice(id: string, price: number): Promise<void> 
   })
 }
 
-export async function createItemRecord(name: string, price: number): Promise<ItemPrice> {
+export async function createItemRecord(name: string, price: number, image?: string, maxQty?: number): Promise<ItemPrice> {
+  const fields: Record<string, string> = { Name: name, Price: String(price) }
+  if (image)  fields.Image  = image
+  if (maxQty) fields.MaxQty = String(maxQty)
   const res  = await fetch(ITEMS_URL, {
     method:  'POST',
     headers,
-    body:    JSON.stringify({ fields: { Name: name, Price: String(price) } }),
+    body:    JSON.stringify({ fields }),
   })
   const json = await res.json()
-  return { id: json.id, name, price }
+  return { id: json.id, name, price, image, maxQty }
+}
+
+export async function deleteItemRecord(id: string): Promise<void> {
+  await fetch(`${ITEMS_URL}/${id}`, { method: 'DELETE', headers })
 }
 
 // ── Settings ─────────────────────────────────────────────────

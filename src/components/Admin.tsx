@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
-import { fetchAllBookings, updateBookingStatus, deleteBooking, createBooking, fetchAllReviews, updateReviewStatus, updateReviewImage, fetchItemPrices, updateItemPrice, createItemRecord, fetchSetting, updateSetting, type Booking, type BookingStatus, type Review, type ItemPrice } from '../lib/airtable'
-import { RENTAL_ITEMS } from './Experience'
+import { fetchAllBookings, updateBookingStatus, deleteBooking, createBooking, fetchAllReviews, updateReviewStatus, updateReviewImage, fetchItemPrices, updateItemPrice, createItemRecord, deleteItemRecord, fetchSetting, updateSetting, type Booking, type BookingStatus, type Review, type ItemPrice } from '../lib/airtable'
+import { RENTAL_ITEMS, mergeAirtableItems, type ExperienceItem } from './Experience'
 
 const STATUS_COLORS: Record<BookingStatus | 'Completed', string> = {
   Pending:   'bg-yellow-100 text-yellow-800 border-yellow-300',
@@ -71,11 +71,81 @@ export default function Admin(): React.ReactElement {
   const [showPackagePrices,    setShowPackagePrices]    = useState<boolean>(true)
   const [priceToggleSaving,    setPriceToggleSaving]    = useState(false)
 
+  // Add Item state
+  const [showAddItem,     setShowAddItem]     = useState(false)
+  const [newItemName,     setNewItemName]     = useState('')
+  const [newItemPrice,    setNewItemPrice]    = useState('')
+  const [newItemMaxQty,   setNewItemMaxQty]   = useState('1')
+  const [newItemImage,    setNewItemImage]    = useState<string>('')
+  const [newItemPreview,  setNewItemPreview]  = useState<string>('')
+  const [addItemLoading,  setAddItemLoading]  = useState(false)
+  const [confirmDelItem,  setConfirmDelItem]  = useState<string | null>(null)
+  const [allItems,        setAllItems]        = useState<ExperienceItem[]>(RENTAL_ITEMS)
+
+  const compressImage = (file: File): Promise<string> => {
+    return new Promise((resolve) => {
+      const reader = new FileReader()
+      reader.onload = (e) => {
+        const img = new Image()
+        img.onload = () => {
+          const canvas = document.createElement('canvas')
+          const MAX_W = 500
+          const scale = img.width > MAX_W ? MAX_W / img.width : 1
+          canvas.width  = img.width  * scale
+          canvas.height = img.height * scale
+          const ctx = canvas.getContext('2d')!
+          ctx.drawImage(img, 0, 0, canvas.width, canvas.height)
+          resolve(canvas.toDataURL('image/jpeg', 0.7))
+        }
+        img.src = e.target?.result as string
+      }
+      reader.readAsDataURL(file)
+    })
+  }
+
+  const handleImageSelect = async (e: React.ChangeEvent<HTMLInputElement>): Promise<void> => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    const compressed = await compressImage(file)
+    setNewItemImage(compressed)
+    setNewItemPreview(compressed)
+  }
+
+  const handleAddItem = async (): Promise<void> => {
+    if (!newItemName.trim() || !newItemPrice || !newItemImage) return
+    setAddItemLoading(true)
+    const price  = Number(newItemPrice)
+    const maxQty = Number(newItemMaxQty) || 1
+    const created = await createItemRecord(newItemName.trim(), price, newItemImage, maxQty)
+    setItemPrices((prev) => [...prev, created])
+    setLocalPrices((prev) => ({ ...prev, [created.id]: String(price) }))
+    setAllItems((prev) => mergeAirtableItems(RENTAL_ITEMS, [...itemPrices, created]))
+    setShowAddItem(false)
+    setNewItemName('')
+    setNewItemPrice('')
+    setNewItemMaxQty('1')
+    setNewItemImage('')
+    setNewItemPreview('')
+    setAddItemLoading(false)
+  }
+
+  const handleDeleteItem = async (id: string): Promise<void> => {
+    await deleteItemRecord(id)
+    setItemPrices((prev) => prev.filter((p) => p.id !== id))
+    setAllItems((prev) => {
+      const remaining = itemPrices.filter((p) => p.id !== id)
+      return mergeAirtableItems(RENTAL_ITEMS, remaining)
+    })
+    setConfirmDelItem(null)
+  }
+
+  const isCustomItem = (name: string): boolean => !RENTAL_ITEMS.some((ri) => ri.name === name)
+
   const toggleItemKey = (key: string): void => {
     setSelectedKeys((prev) => {
       const next = prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key]
       const autoTotal = next.reduce((sum, k) => {
-        const ri = RENTAL_ITEMS.find((r) => r.key === k)
+        const ri = allItems.find((r) => r.key === k)
         if (!ri) return sum
         return sum + ri.fullPrice * (ri.unit === 'chair' ? (ri.minQty ?? 1) : 1)
       }, 0)
@@ -88,7 +158,7 @@ export default function Admin(): React.ReactElement {
     const base   = window.location.origin
     const params = new URLSearchParams()
     selectedKeys.forEach((key) => {
-      const ri = RENTAL_ITEMS.find((r) => r.key === key)
+      const ri = allItems.find((r) => r.key === key)
       if (ri) { params.append('item', ri.name); params.append('image', ri.images[0]) }
     })
     if (amount) params.set('total', amount)
@@ -104,7 +174,7 @@ export default function Admin(): React.ReactElement {
   const buildItemReviewLink = (): string => {
     const base   = window.location.origin
     const params = new URLSearchParams()
-    const first  = RENTAL_ITEMS.find((r) => r.key === selectedKeys[0])
+    const first  = allItems.find((r) => r.key === selectedKeys[0])
     if (first) { params.set('item', first.name); params.set('image', first.images[0]) }
     return `${base}/review?${params.toString()}`
   }
@@ -119,7 +189,7 @@ export default function Admin(): React.ReactElement {
     const base   = window.location.origin
     const params = new URLSearchParams()
     selectedKeys.forEach((key) => {
-      const ri = RENTAL_ITEMS.find((r) => r.key === key)
+      const ri = allItems.find((r) => r.key === key)
       if (ri) { params.append('item', ri.name); params.append('image', ri.images[0]) }
     })
     if (balanceAmount) params.set('amount', balanceAmount)
@@ -136,7 +206,7 @@ export default function Admin(): React.ReactElement {
     const base      = window.location.origin
     const params    = new URLSearchParams({ item: itemName || b.service })
     if (amount) params.set('total', amount)
-    const matched = RENTAL_ITEMS.find((r) => r.name === itemName)
+    const matched = allItems.find((r) => r.name === itemName)
     if (matched) params.set('image', matched.images[0])
     return `${base}/pay?${params.toString()}`
   }
@@ -174,6 +244,9 @@ export default function Admin(): React.ReactElement {
     fetchAllBookings()
       .then(setBookings)
       .finally(() => setLoading(false))
+    fetchItemPrices().then((prices) => {
+      if (prices.length) setAllItems(mergeAirtableItems(RENTAL_ITEMS, prices))
+    }).catch(() => {})
   }, [authed])
 
   useEffect(() => {
@@ -188,11 +261,11 @@ export default function Admin(): React.ReactElement {
     if (!authed || tab !== 'prices') return
     setPricesLoading(true)
     fetchItemPrices().then(async (existing) => {
-      // Auto-create any missing items
       const missing = RENTAL_ITEMS.filter((ri) => !existing.find((e) => e.name === ri.name))
       const created = await Promise.all(missing.map((ri) => createItemRecord(ri.name, ri.fullPrice)))
       const all = [...existing, ...created]
       setItemPrices(all)
+      setAllItems(mergeAirtableItems(RENTAL_ITEMS, all))
       const map: Record<string, string> = {}
       all.forEach((ip) => { map[ip.id] = String(ip.price) })
       setLocalPrices(map)
@@ -463,7 +536,7 @@ export default function Admin(): React.ReactElement {
                         <div className="border-t border-border-col px-5 py-3 bg-cream">
                           <p className="text-[11px] font-bold text-text-muted uppercase tracking-wider mb-2">Select Image to Show With Review</p>
                           <div className="flex gap-2 flex-wrap">
-                            {RENTAL_ITEMS.map((ri) => (
+                            {allItems.map((ri) => (
                               <button
                                 key={ri.key}
                                 onClick={() => void handleReviewImage(r.id, r.image === ri.images[0] ? '' : ri.images[0])}
@@ -499,7 +572,7 @@ export default function Admin(): React.ReactElement {
             <div>
               <p className="text-[13px] text-text-muted mb-4">Select one or more items to include in the payment link. Click an item to select or deselect it.</p>
               <div className="grid grid-cols-3 mob:grid-cols-2 gap-3">
-                {RENTAL_ITEMS.map((ri) => {
+                {allItems.map((ri) => {
                   const selected = selectedKeys.includes(ri.key)
                   return (
                     <button
@@ -604,8 +677,8 @@ export default function Admin(): React.ReactElement {
                 </div>
 
                 {/* Image preview */}
-                {RENTAL_ITEMS.find((r) => r.key === selectedKeys[0]) && (() => {
-                  const ri = RENTAL_ITEMS.find((r) => r.key === selectedKeys[0])!
+                {allItems.find((r) => r.key === selectedKeys[0]) && (() => {
+                  const ri = allItems.find((r) => r.key === selectedKeys[0])!
                   return (
                     <div className="flex items-center gap-3">
                       <img src={ri.images[0]} alt={ri.name} className="w-16 h-12 object-cover rounded-[8px] border border-border-col flex-shrink-0" />
@@ -691,7 +764,10 @@ export default function Admin(): React.ReactElement {
         {/* ── Item Prices Tab ── */}
         {tab === 'prices' && (
           <div className="flex flex-col gap-4">
-            <p className="text-[13px] text-text-muted">Edit item prices below. Changes save automatically when you click away.</p>
+            <div className="flex items-center justify-between">
+              <p className="text-[13px] text-text-muted">Manage items and prices. Changes save on blur.</p>
+              <button onClick={() => setShowAddItem(true)} className="px-3 py-2 bg-gold text-off-white text-[12px] font-semibold rounded-[10px] border-none cursor-pointer hover:bg-gold-dark transition-colors whitespace-nowrap">+ Add Item</button>
+            </div>
 
             {/* Package price toggle */}
             <div className="bg-white rounded-[14px] border border-border-col px-4 py-3 flex items-center justify-between gap-3">
@@ -711,17 +787,18 @@ export default function Admin(): React.ReactElement {
               <p className="text-[14px] text-text-muted">Loading prices…</p>
             ) : (
               <div className="flex flex-col gap-3">
-                {RENTAL_ITEMS.map((ri) => {
+                {allItems.map((ri) => {
                   const ip = itemPrices.find((p) => p.name === ri.name)
                   if (!ip) return null
                   const isSaving = priceSaving === ip.id
                   const isSaved  = priceSaved  === ip.id
+                  const custom   = isCustomItem(ri.name)
                   return (
                     <div key={ri.key} className="bg-white rounded-[14px] border border-border-col px-4 py-3 flex items-center gap-4">
                       <img src={ri.images[0]} alt={ri.name} className="w-12 h-12 rounded-[8px] object-cover flex-shrink-0" />
-                      <div className="flex-1">
-                        <p className="text-[13px] font-semibold text-text-dark">{ri.name}</p>
-                        <p className="text-[11px] text-text-muted">{ri.unit === 'chair' ? 'per chair' : 'flat rate'}</p>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-[13px] font-semibold text-text-dark truncate">{ri.name}</p>
+                        <p className="text-[11px] text-text-muted">{ri.unit === 'chair' ? 'per chair' : 'flat rate'}{custom ? ' · custom' : ''}</p>
                       </div>
                       <div className="flex items-center gap-2 flex-shrink-0">
                         <div className="relative">
@@ -738,6 +815,16 @@ export default function Admin(): React.ReactElement {
                         <span className="text-[12px] w-14 text-center font-semibold">
                           {isSaving ? <span className="text-text-muted">Saving…</span> : isSaved ? <span className="text-green-600">Saved ✓</span> : null}
                         </span>
+                        {custom && (
+                          confirmDelItem === ip.id ? (
+                            <div className="flex gap-1">
+                              <button onClick={() => void handleDeleteItem(ip.id)} className="px-2 py-1 rounded-[6px] text-[11px] font-semibold bg-red-500 text-white border-none cursor-pointer hover:bg-red-600 transition-colors">Yes</button>
+                              <button onClick={() => setConfirmDelItem(null)} className="px-2 py-1 rounded-[6px] text-[11px] font-semibold border border-border-col bg-white text-text-dark cursor-pointer hover:border-gold transition-colors">No</button>
+                            </div>
+                          ) : (
+                            <button onClick={() => setConfirmDelItem(ip.id)} className="px-2 py-1 rounded-[6px] text-[11px] font-semibold border border-red-200 bg-white text-red-400 cursor-pointer hover:bg-red-50 hover:border-red-400 transition-colors">Delete</button>
+                          )
+                        )}
                       </div>
                     </div>
                   )
@@ -770,7 +857,7 @@ export default function Admin(): React.ReactElement {
               <div>
                 <label className="text-[12px] font-bold text-text-muted uppercase tracking-wider block mb-2">Select Item</label>
                 <div className="grid grid-cols-3 gap-2">
-                  {RENTAL_ITEMS.map((ri) => (
+                  {allItems.map((ri) => (
                     <button
                       key={ri.key}
                       onClick={() => setLinkItem(linkItem === ri.name ? '' : ri.name)}
@@ -828,6 +915,59 @@ export default function Admin(): React.ReactElement {
         </div>
       )}
 
+      {/* Add Item Modal */}
+      {showAddItem && (
+        <div className="fixed inset-0 bg-[rgba(20,12,4,0.75)] backdrop-blur-sm z-[500] flex items-center justify-center p-4" onClick={() => setShowAddItem(false)}>
+          <div className="bg-off-white rounded-[20px] w-full max-w-[420px] overflow-hidden shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <div className="bg-dark px-6 py-5 flex items-center justify-between">
+              <h3 className="text-off-white font-bold text-[17px]">Add New Item</h3>
+              <button className="bg-white/10 border-none text-off-white w-8 h-8 rounded-full cursor-pointer flex items-center justify-center hover:bg-white/20 transition-colors" onClick={() => setShowAddItem(false)}>✕</button>
+            </div>
+            <div className="px-6 py-6 flex flex-col gap-4">
+              {/* Image upload */}
+              <div>
+                <label className="text-[12px] font-bold text-text-muted uppercase tracking-wider block mb-2">Item Image *</label>
+                {newItemPreview ? (
+                  <div className="relative">
+                    <img src={newItemPreview} alt="Preview" className="w-full h-[180px] object-cover rounded-[12px] border border-border-col" />
+                    <button onClick={() => { setNewItemImage(''); setNewItemPreview('') }} className="absolute top-2 right-2 w-7 h-7 rounded-full bg-black/60 text-white border-none cursor-pointer flex items-center justify-center text-[12px] hover:bg-black/80 transition-colors">✕</button>
+                  </div>
+                ) : (
+                  <label className="flex flex-col items-center justify-center w-full h-[140px] rounded-[12px] border-2 border-dashed border-border-col bg-cream cursor-pointer hover:border-gold transition-colors">
+                    <span className="text-[28px] text-text-muted mb-1">+</span>
+                    <span className="text-[12px] text-text-muted font-semibold">Tap to upload photo</span>
+                    <span className="text-[11px] text-text-muted mt-0.5">JPG or PNG</span>
+                    <input type="file" accept="image/*" className="hidden" onChange={(e) => void handleImageSelect(e)} />
+                  </label>
+                )}
+              </div>
+              {/* Name */}
+              <div>
+                <label className="text-[12px] font-bold text-text-muted uppercase tracking-wider block mb-1">Item Name *</label>
+                <input type="text" placeholder="e.g. Gold Arch Stand" value={newItemName} onChange={(e) => setNewItemName(e.target.value)} className="w-full border border-border-col rounded-[10px] px-3 py-2.5 text-[13px] text-text-dark outline-none focus:border-gold bg-white" />
+              </div>
+              {/* Price */}
+              <div>
+                <label className="text-[12px] font-bold text-text-muted uppercase tracking-wider block mb-1">Price *</label>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted font-semibold text-[14px]">$</span>
+                  <input type="number" min="1" placeholder="e.g. 75" value={newItemPrice} onChange={(e) => setNewItemPrice(e.target.value)} className="w-full border border-border-col rounded-[10px] pl-7 pr-3 py-2.5 text-[13px] text-text-dark outline-none focus:border-gold bg-white" />
+                </div>
+              </div>
+              {/* Max Quantity */}
+              <div>
+                <label className="text-[12px] font-bold text-text-muted uppercase tracking-wider block mb-1">Max Quantity Available</label>
+                <input type="number" min="1" value={newItemMaxQty} onChange={(e) => setNewItemMaxQty(e.target.value)} className="w-full border border-border-col rounded-[10px] px-3 py-2.5 text-[13px] text-text-dark outline-none focus:border-gold bg-white" />
+              </div>
+              {/* Submit */}
+              <button onClick={() => void handleAddItem()} disabled={addItemLoading || !newItemName.trim() || !newItemPrice || !newItemImage} className="w-full py-3 rounded-pill bg-gold text-off-white font-semibold text-[14px] border-none cursor-pointer hover:bg-gold-dark transition-colors disabled:opacity-50">
+                {addItemLoading ? 'Adding…' : 'Add Item'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Add Booking Modal */}
       {showAdd && (
         <div className="fixed inset-0 bg-[rgba(20,12,4,0.75)] backdrop-blur-sm z-[500] flex items-center justify-center p-4" onClick={() => setShowAdd(false)}>
@@ -868,7 +1008,7 @@ export default function Admin(): React.ReactElement {
                   <label className="text-[12px] font-bold text-text-muted uppercase tracking-wider block mb-1">Rental Item</label>
                   <select value={addForm.serviceDetail} onChange={(e) => setAddForm((f) => ({ ...f, serviceDetail: e.target.value }))} className="w-full border border-border-col rounded-[10px] px-3 py-2.5 text-[13px] text-text-dark outline-none focus:border-gold bg-white">
                     <option value="">Select item</option>
-                    {['Serpentine Table', 'Chiavari Chairs', 'Grad Marquee Letters'].map((i) => <option key={i} value={i}>{i}</option>)}
+                    {allItems.map((i) => <option key={i.key} value={i.name}>{i.name}</option>)}
                   </select>
                 </div>
               )}

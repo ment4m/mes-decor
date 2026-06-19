@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import { fetchItemPrices } from '../lib/airtable'
 
-export type ItemKey = 'serpentine-table' | 'chiavari-chairs' | 'grad-marquee' | 'velvet-loveseat' | 'backdrop-stand' | 'cylinder-pedestals' | 'gold-geo-stands' | 'gold-cocktail-tables' | 'white-box-pedestals' | 'wave-drape-set'
+export type ItemKey = string
 export type PaymentType = 'full' | 'deposit'
 type DeliveryType = 'pickup' | 'delivery'
 
@@ -27,7 +27,37 @@ export const RENTAL_ITEMS: ExperienceItem[] = [
   { id: 8, key: 'gold-cocktail-tables',name: 'Gold Cocktail Tables',    images: ['/rental/rental8.png'], fullPrice: 60,  unit: 'item',  maxQty: 1  },
   { id: 9, key: 'white-box-pedestals', name: 'White Box Pedestals',     images: ['/rental/rental9.png'], fullPrice: 60,  unit: 'item',  maxQty: 1  },
   { id: 10, key: 'wave-drape-set',     name: 'Wave-Shaped Stand Set with Ivory Drape Set', images: ['/rental/rental10.jpg'], fullPrice: 200, unit: 'item', maxQty: 1 },
+  { id: 11, key: 'pipe-drape-stand',   name: 'Pipe & Drape Backdrop Stand (Adjustable 8ft–20ft)', images: ['/rental/rental11.jpg'], fullPrice: 40, unit: 'item', maxQty: 6 },
 ]
+
+function slugify(name: string): string {
+  return name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
+}
+
+export function mergeAirtableItems(
+  hardcoded: ExperienceItem[],
+  airtableItems: { name: string; price: number; image?: string; maxQty?: number }[],
+): ExperienceItem[] {
+  const merged = hardcoded.map((ri) => {
+    const match = airtableItems.find((p) => p.name === ri.name)
+    return match ? { ...ri, fullPrice: match.price } : ri
+  })
+  let nextId = Math.max(...hardcoded.map((r) => r.id)) + 1
+  for (const ai of airtableItems) {
+    if (ai.name.startsWith('__')) continue
+    if (hardcoded.some((r) => r.name === ai.name)) continue
+    merged.push({
+      id: nextId++,
+      key: slugify(ai.name),
+      name: ai.name,
+      images: ai.image ? [ai.image] : ['/rental/placeholder.svg'],
+      fullPrice: ai.price,
+      unit: 'item',
+      maxQty: ai.maxQty ?? 1,
+    })
+  }
+  return merged
+}
 
 const ITEMS = RENTAL_ITEMS
 
@@ -406,10 +436,7 @@ export default function Experience(): React.ReactElement {
   useEffect(() => {
     fetchItemPrices().then((prices) => {
       if (!prices.length) return
-      setDynamicItems(RENTAL_ITEMS.map((ri) => {
-        const match = prices.find((p) => p.name === ri.name)
-        return match ? { ...ri, fullPrice: match.price } : ri
-      }))
+      setDynamicItems(mergeAirtableItems(RENTAL_ITEMS, prices))
     }).catch(() => { /* fallback to hardcoded */ })
   }, [])
 
