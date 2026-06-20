@@ -28,6 +28,7 @@ export const RENTAL_ITEMS: ExperienceItem[] = [
   { id: 9, key: 'white-box-pedestals', name: 'White Box Pedestals',     images: ['/rental/rental9.png'], fullPrice: 60,  unit: 'item',  maxQty: 1  },
   { id: 10, key: 'wave-drape-set',     name: 'Wave-Shaped Stand Set with Ivory Drape Set', images: ['/rental/rental10.jpg'], fullPrice: 200, unit: 'item', maxQty: 1 },
   { id: 11, key: 'pipe-drape-stand',   name: 'Pipe & Drape Backdrop Stand (Adjustable 8ft–20ft)', images: ['/rental/rental11.jpg'], fullPrice: 40, unit: 'item', maxQty: 6 },
+  { id: 12, key: '3d-backdrop-panel',  name: '1 Piece 3D Backdrop Panel', images: ['/rental/rental12.jpg'], fullPrice: 100, unit: 'item', maxQty: 1 },
 ]
 
 function slugify(name: string): string {
