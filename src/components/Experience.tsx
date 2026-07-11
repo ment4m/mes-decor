@@ -161,6 +161,8 @@ export function PaymentPanel({ item, onClose, allItems = RENTAL_ITEMS }: { item:
 
   // Main item qty
   const [qty,          setQty]         = useState<number>(minQty)
+  // For wave-drape-set: 1 = one side ($100), 2 = both sides ($200)
+  const [drapeSides,   setDrapeSides]  = useState<1 | 2>(2)
   // Additional items: key -> qty
   const [extras,       setExtras]       = useState<Partial<Record<ItemKey, number>>>({})
   const [deliveryType, setDeliveryType] = useState<DeliveryType>('pickup')
@@ -173,7 +175,8 @@ export function PaymentPanel({ item, onClose, allItems = RENTAL_ITEMS }: { item:
 
   const otherItems = allItems.filter((i) => i.key !== item.key)
 
-  const rentalTotal = item.fullPrice * qty
+  const effectivePrice  = item.key === 'wave-drape-set' ? Math.round(item.fullPrice / 2) * drapeSides : item.fullPrice
+  const rentalTotal = effectivePrice * qty
     + otherItems.reduce((sum, i) => sum + (extras[i.key] ? i.fullPrice * (extras[i.key] as number) : 0), 0)
   const deliveryFee   = deliveryType === 'delivery' && deliveryInfo ? deliveryInfo.fee : 0
   const grandTotal    = rentalTotal + deliveryFee
@@ -232,6 +235,29 @@ export function PaymentPanel({ item, onClose, allItems = RENTAL_ITEMS }: { item:
         </div>
 
         <div className="px-6 py-6 flex flex-col gap-5">
+
+          {/* Sides selector — wave drape set only */}
+          {item.key === 'wave-drape-set' && (
+            <div>
+              <label className="text-[12px] font-bold text-text-muted uppercase tracking-wider block mb-2">Number of Sides</label>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setDrapeSides(1)}
+                  className={`flex-1 py-3 rounded-[12px] border text-[13px] font-semibold transition-colors cursor-pointer ${drapeSides === 1 ? 'bg-dark border-dark text-off-white' : 'bg-white border-border-col text-text-dark hover:border-gold'}`}
+                >
+                  <span className="block">One Side</span>
+                  <span className={`text-[12px] font-bold ${drapeSides === 1 ? 'text-gold' : 'text-text-muted'}`}>${Math.round(item.fullPrice / 2)}</span>
+                </button>
+                <button
+                  onClick={() => setDrapeSides(2)}
+                  className={`flex-1 py-3 rounded-[12px] border text-[13px] font-semibold transition-colors cursor-pointer ${drapeSides === 2 ? 'bg-dark border-dark text-off-white' : 'bg-white border-border-col text-text-dark hover:border-gold'}`}
+                >
+                  <span className="block">Both Sides</span>
+                  <span className={`text-[12px] font-bold ${drapeSides === 2 ? 'text-gold' : 'text-text-muted'}`}>${item.fullPrice}</span>
+                </button>
+              </div>
+            </div>
+          )}
 
           {/* Quantity — chairs only */}
           {item.unit === 'chair' && (
@@ -376,7 +402,11 @@ export function PaymentPanel({ item, onClose, allItems = RENTAL_ITEMS }: { item:
           <div className="bg-cream rounded-[12px] px-4 py-4 flex flex-col gap-1.5">
             <div className="flex justify-between text-[14px]">
               <span className="text-text-muted">
-                {item.unit === 'chair' ? `$${item.fullPrice} × ${qty} chair${qty > 1 ? 's' : ''}` : 'Rental price'}
+                {item.unit === 'chair'
+                  ? `$${item.fullPrice} × ${qty} chair${qty > 1 ? 's' : ''}`
+                  : item.key === 'wave-drape-set'
+                    ? `${drapeSides === 1 ? 'One side' : 'Both sides'}`
+                    : 'Rental price'}
               </span>
               <span className="font-semibold text-text-dark">${rentalTotal}</span>
             </div>
