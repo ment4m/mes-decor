@@ -30,7 +30,8 @@ export const RENTAL_ITEMS: ExperienceItem[] = [
   { id: 11, key: 'pipe-drape-stand',   name: 'Pipe & Drape Backdrop Stand (Adjustable 8ft–20ft)', images: ['/rental/rental11.jpg'], fullPrice: 40, unit: 'item', maxQty: 6 },
   { id: 12, key: '3d-backdrop-panel',  name: '1 Piece 3D Backdrop Panel',  images: ['/rental/rental12.jpg'], fullPrice: 100, unit: 'item', maxQty: 1 },
   { id: 13, key: 'backdrop-wood-panels', name: 'Backdrop Wooden Panels',          images: ['/rental/rental13.jpg'], fullPrice: 70,  unit: 'item', maxQty: 1 },
-  { id: 14, key: 'backdrop-ivory-drape', name: 'Backdrop Stand with Ivory Drapery', images: ['/rental/rental14.png'], fullPrice: 200, unit: 'item', maxQty: 1 },
+  { id: 14, key: 'backdrop-ivory-drape',         name: 'Backdrop Stand with Ivory Drapery',           images: ['/rental/rental14.png'], fullPrice: 200, unit: 'item', maxQty: 1 },
+  { id: 15, key: 'backdrop-ivory-drape-premium', name: 'Backdrop Stand with Ivory Drapery (Premium)', images: ['/rental/rental15.png'], fullPrice: 300, unit: 'item', maxQty: 1 },
 ]
 
 function slugify(name: string): string {
