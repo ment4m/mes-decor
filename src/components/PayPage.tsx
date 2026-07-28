@@ -6,7 +6,7 @@ const ORS_KEY         = import.meta.env.VITE_ORS_KEY as string
 const BUSINESS_LNG    = -96.6989
 const BUSINESS_LAT    = 33.0198
 const RATE_PER_MILE   = 0.75
-const MAX_DELIVERY_MI = 100
+const MAX_DELIVERY_MI = 200
 
 function cleanAddress(raw: string): string {
   return raw
