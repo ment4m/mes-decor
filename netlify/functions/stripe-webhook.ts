@@ -92,17 +92,19 @@ export const handler: Handler = async (event) => {
 
   if (stripeEvent.type === 'checkout.session.completed') {
     const session  = stripeEvent.data.object as Stripe.Checkout.Session
-    const meta     = session.metadata ?? {}
-    const amount   = session.amount_total ? `$${(session.amount_total / 100).toFixed(2)}` : 'N/A'
-    const items    = meta.items      || 'N/A'
-    const date     = meta.date       || ''
-    const time     = meta.time       || ''
-    const location = meta.location   || 'N/A'
-    const name     = meta.clientName || 'N/A'
+    const meta        = session.metadata ?? {}
+    const amount      = session.amount_total ? `$${(session.amount_total / 100).toFixed(2)}` : 'N/A'
+    const items       = meta.items       || 'N/A'
+    const date        = meta.date        || ''
+    const time        = meta.time        || ''
+    const location    = meta.location    || 'N/A'
+    const name        = meta.clientName  || 'N/A'
+    const isDeposit   = meta.paymentType === 'deposit'
+    const paymentLabel = isDeposit ? '50% Deposit' : 'Full Payment'
 
     const title       = name !== 'N/A' ? `Mes Decor – ${name}` : `Mes Decor – ${items}`
     const description = `Client: ${name} | Payment: ${amount}`
-    const subject     = `💰 New Booking – ${name !== 'N/A' ? name : items} on ${date}`
+    const subject     = `💰 ${isDeposit ? 'Deposit' : 'Full Payment'} – ${name !== 'N/A' ? name : items}${date ? ` on ${date}` : ''}`
 
     // Format date nicely for email display
     const tz          = 'America/Chicago'
@@ -144,8 +146,12 @@ export const handler: Handler = async (event) => {
           <td style="padding:10px 14px;background:#f9f6ef;border-radius:8px 8px 0 0;font-size:14px;font-weight:600;color:#1a1008;text-align:right;">${name}</td>
         </tr>
         <tr>
-          <td style="padding:10px 14px;font-size:12px;font-weight:700;color:#9a8a72;text-transform:uppercase;letter-spacing:0.05em;border-top:1px solid #ede8dc;">Items</td>
+          <td style="padding:10px 14px;font-size:12px;font-weight:700;color:#9a8a72;text-transform:uppercase;letter-spacing:0.05em;border-top:1px solid #ede8dc;">Reserved</td>
           <td style="padding:10px 14px;font-size:14px;font-weight:600;color:#1a1008;text-align:right;border-top:1px solid #ede8dc;">${items}</td>
+        </tr>
+        <tr>
+          <td style="padding:10px 14px;font-size:12px;font-weight:700;color:#9a8a72;text-transform:uppercase;letter-spacing:0.05em;border-top:1px solid #ede8dc;">Payment</td>
+          <td style="padding:10px 14px;font-size:14px;font-weight:600;text-align:right;border-top:1px solid #ede8dc;color:${isDeposit ? '#c9a84c' : '#16a34a'};">${paymentLabel}</td>
         </tr>
       </table>
 

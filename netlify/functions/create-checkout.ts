@@ -16,6 +16,7 @@ interface CheckoutBody {
   time?:       string
   location?:   string
   clientName?: string
+  itemNames?:  string[]
 }
 
 export const handler: Handler = async (event) => {
@@ -24,7 +25,7 @@ export const handler: Handler = async (event) => {
   }
 
   try {
-    const { items, paymentType, date, time, location, clientName }: CheckoutBody = JSON.parse(event.body ?? '{}')
+    const { items, paymentType, date, time, location, clientName, itemNames }: CheckoutBody = JSON.parse(event.body ?? '{}')
     if (!items?.length) return { statusCode: 400, body: 'Invalid request' }
 
     const isDeposit = paymentType === 'deposit'
@@ -52,7 +53,7 @@ export const handler: Handler = async (event) => {
       payment_method_types: ['card'],
       line_items:   lineItems,
       mode:         'payment',
-      metadata:     { date: date ?? '', time: time ?? '', location: location ?? '', clientName: clientName ?? '', items: items.map((i) => i.name).join(', ') },
+      metadata:     { date: date ?? '', time: time ?? '', location: location ?? '', clientName: clientName ?? '', items: (itemNames ?? items.map((i) => i.name)).join(', '), paymentType },
       success_url:  `${event.headers.origin}/payment-success?${successParams.toString()}`,
       cancel_url:   `${event.headers.origin}/#rentals`,
     })

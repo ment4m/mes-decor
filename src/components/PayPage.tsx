@@ -62,6 +62,7 @@ async function startCheckout(
   location:    string,
   clientName:  string,
   paymentType: 'full' | 'deposit',
+  itemNames:   string[],
 ): Promise<void> {
   const res  = await fetch('/.netlify/functions/create-checkout', {
     method:  'POST',
@@ -73,6 +74,7 @@ async function startCheckout(
       time,
       location,
       clientName,
+      itemNames,
     }),
   })
   const data = await res.json()
@@ -147,7 +149,7 @@ export default function PayPage(): React.ReactElement {
       const amountCents = isBalanceMode
         ? Math.round((amountParam as number) * 100)
         : Math.round(grandTotal * 100)
-      await startCheckout(amountCents, label, date, time, location, clientName, paymentType)
+      await startCheckout(amountCents, label, date, time, location, clientName, paymentType, items)
     } catch {
       setError('Something went wrong. Please try again.')
       setLoading(false)
