@@ -30,10 +30,16 @@ export const RENTAL_ITEMS: ExperienceItem[] = [
   { id: 11, key: 'pipe-drape-stand',   name: 'Pipe & Drape Backdrop Stand (Adjustable 8ft–20ft)', images: ['/rental/rental11.jpg'], fullPrice: 40, unit: 'item', maxQty: 6 },
   { id: 12, key: '3d-backdrop-panel',  name: '1 Piece 3D Backdrop Panel',  images: ['/rental/rental12.jpg'], fullPrice: 100, unit: 'item', maxQty: 1 },
   { id: 13, key: 'backdrop-wood-panels', name: 'Backdrop Wooden Panels',          images: ['/rental/rental13.jpg'], fullPrice: 70,  unit: 'item', maxQty: 1 },
-  { id: 14, key: 'backdrop-ivory-drape',         name: 'Backdrop Stand with Ivory Drapery',           images: ['/rental/rental14.png'], fullPrice: 200, unit: 'item', maxQty: 1 },
-  { id: 15, key: 'backdrop-ivory-drape-premium', name: 'Backdrop Stand with Ivory Drapery (Premium)',                        images: ['/rental/rental15.png'], fullPrice: 300, unit: 'item', maxQty: 1 },
+  { id: 14, key: 'backdrop-ivory-drape',         name: 'Backdrop Stand with Ivory Drapery',           images: ['/rental/rental14.png'], fullPrice: 250, unit: 'item', maxQty: 1 },
+  { id: 15, key: 'backdrop-ivory-drape-premium', name: 'Backdrop Stand with Ivory Drapery (Premium)',                        images: ['/rental/rental15.png'], fullPrice: 350, unit: 'item', maxQty: 1 },
   { id: 16, key: 'loveseat-couch-rental',        name: 'Loveseat Couch Rental – Bridal Shower, Baby Shower, Event Decor', images: ['/rental/rental16.png'], fullPrice: 200, unit: 'item', maxQty: 1 },
 ]
+
+// Optional setup fee offered at checkout, keyed by item key
+export const SETUP_FEES: Partial<Record<ItemKey, number>> = {
+  'backdrop-ivory-drape':         50,
+  'backdrop-ivory-drape-premium': 75,
+}
 
 function slugify(name: string): string {
   return name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
@@ -176,14 +182,18 @@ export function PaymentPanel({ item, onClose, allItems = RENTAL_ITEMS }: { item:
   const [deliveryErr,  setDeliveryErr]  = useState<string>('')
   const [calculating,  setCalculating]  = useState<boolean>(false)
   const [loading,       setLoading]       = useState<boolean>(false)
+  // Setup add-on: key -> wants setup
+  const [setup,         setSetup]         = useState<Partial<Record<ItemKey, boolean>>>({})
 
   const otherItems = allItems.filter((i) => i.key !== item.key)
+  const setupItems = deliveryType !== 'delivery' ? [] : [item, ...otherItems.filter((i) => extras[i.key])].filter((i) => SETUP_FEES[i.key])
+  const setupTotal = setupItems.reduce((sum, i) => sum + (setup[i.key] ? (SETUP_FEES[i.key] as number) : 0), 0)
 
   const effectivePrice  = item.key === 'wave-drape-set' ? Math.round(item.fullPrice / 2) * drapeSides : item.fullPrice
   const rentalTotal = effectivePrice * qty
     + otherItems.reduce((sum, i) => sum + (extras[i.key] ? i.fullPrice * (extras[i.key] as number) : 0), 0)
   const deliveryFee   = deliveryType === 'delivery' && deliveryInfo ? deliveryInfo.fee : 0
-  const grandTotal    = rentalTotal + deliveryFee
+  const grandTotal    = rentalTotal + setupTotal + deliveryFee
   const canPay     = (deliveryType === 'pickup' || deliveryInfo !== null)
 
   const toggleExtra = (key: ItemKey, minQ: number): void => {
@@ -214,7 +224,7 @@ export function PaymentPanel({ item, onClose, allItems = RENTAL_ITEMS }: { item:
     if (!canPay) return
     setLoading(true)
     const lineItems: CheckoutLineItem[] = [
-      { name: item.name, amountCents: Math.round(grandTotal * 100), quantity: 1 },
+      { name: setupTotal > 0 ? `${item.name} (with setup)` : item.name, amountCents: Math.round(grandTotal * 100), quantity: 1 },
     ]
     await startCheckout(lineItems, paymentType)
     setLoading(false)
@@ -402,6 +412,29 @@ export function PaymentPanel({ item, onClose, allItems = RENTAL_ITEMS }: { item:
             </div>
           )}
 
+          {/* Setup add-on — items with a setup fee */}
+          {setupItems.map((si) => (
+            <div key={si.key}>
+              <label className="text-[12px] font-bold text-text-muted uppercase tracking-wider block mb-2">
+                {setupItems.length > 1 ? `Setup — ${si.name}` : 'Would you like us to set it up?'}
+              </label>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setSetup((prev) => ({ ...prev, [si.key]: false }))}
+                  className={`flex-1 py-2.5 rounded-[10px] border text-[13px] font-semibold transition-colors cursor-pointer ${!setup[si.key] ? 'bg-dark border-dark text-off-white' : 'bg-white border-border-col text-text-mid hover:border-gold'}`}
+                >
+                  No Setup
+                </button>
+                <button
+                  onClick={() => setSetup((prev) => ({ ...prev, [si.key]: true }))}
+                  className={`flex-1 py-2.5 rounded-[10px] border text-[13px] font-semibold transition-colors cursor-pointer ${setup[si.key] ? 'bg-dark border-dark text-off-white' : 'bg-white border-border-col text-text-mid hover:border-gold'}`}
+                >
+                  Yes, Setup (+${SETUP_FEES[si.key]})
+                </button>
+              </div>
+            </div>
+          ))}
+
           {/* Price summary */}
           <div className="bg-cream rounded-[12px] px-4 py-4 flex flex-col gap-1.5">
             <div className="flex justify-between text-[14px]">
@@ -414,6 +447,12 @@ export function PaymentPanel({ item, onClose, allItems = RENTAL_ITEMS }: { item:
               </span>
               <span className="font-semibold text-text-dark">${rentalTotal}</span>
             </div>
+            {setupTotal > 0 && (
+              <div className="flex justify-between text-[14px]">
+                <span className="text-text-muted">Setup</span>
+                <span className="font-semibold text-text-dark">${setupTotal}</span>
+              </div>
+            )}
             {deliveryFee > 0 && (
               <div className="flex justify-between text-[14px]">
                 <span className="text-text-muted">Delivery ({deliveryInfo!.miles} mi)</span>

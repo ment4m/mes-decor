@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { RENTAL_ITEMS, mergeAirtableItems } from './Experience'
+import { RENTAL_ITEMS, SETUP_FEES, mergeAirtableItems } from './Experience'
 import { fetchItemPrices } from '../lib/airtable'
 
 const ORS_KEY         = import.meta.env.VITE_ORS_KEY as string
@@ -110,11 +110,19 @@ export default function PayPage(): React.ReactElement {
     }).catch(() => {})
   }, [])
   const [error,         setError]         = useState<string>('')
+  // Setup add-on: item name -> wants setup
+  const [setup,         setSetup]         = useState<Record<string, boolean>>({})
 
   const isBalanceMode = amountParam !== null
+  const setupItems    = isBalanceMode || deliveryType !== 'delivery' ? [] : items.flatMap((name) => {
+    const ri  = RENTAL_ITEMS.find((r) => r.name === name)
+    const fee = ri ? SETUP_FEES[ri.key] : undefined
+    return fee ? [{ name, fee }] : []
+  })
+  const setupTotal    = setupItems.reduce((sum, si) => sum + (setup[si.name] ? si.fee : 0), 0)
   const rentalPrice   = totalParam ?? 0
   const deliveryFee   = deliveryType === 'delivery' && deliveryInfo ? deliveryInfo.fee : 0
-  const grandTotal    = rentalPrice + deliveryFee
+  const grandTotal    = rentalPrice + setupTotal + deliveryFee
   const deliveryReady = deliveryType === 'pickup'
                         || (address.trim() !== '' && zipCode.trim() !== '' && deliveryInfo !== null)
   const canPay        = isBalanceMode
@@ -149,7 +157,8 @@ export default function PayPage(): React.ReactElement {
       const amountCents = isBalanceMode
         ? Math.round((amountParam as number) * 100)
         : Math.round(grandTotal * 100)
-      await startCheckout(amountCents, label, date, time, location, clientName, paymentType, items)
+      const itemNames  = items.map((name) => setup[name] && setupItems.some((si) => si.name === name) ? `${name} (with setup)` : name)
+      await startCheckout(amountCents, label, date, time, location, clientName, paymentType, itemNames)
     } catch {
       setError('Something went wrong. Please try again.')
       setLoading(false)
@@ -309,6 +318,25 @@ export default function PayPage(): React.ReactElement {
           </div>
         )}
 
+        {/* Setup add-on — items with a setup fee */}
+        {setupItems.map((si) => (
+          <div key={si.name}>
+            <p className="text-[12px] font-bold text-text-muted uppercase tracking-wider mb-2">
+              {setupItems.length > 1 ? `Setup — ${si.name}` : 'Would you like us to set it up?'}
+            </p>
+            <div className="flex gap-3">
+              <button
+                className={`flex-1 py-2.5 rounded-[10px] border text-[13px] font-semibold transition-colors cursor-pointer ${!setup[si.name] ? 'bg-dark border-dark text-off-white' : 'bg-white border-border-col text-text-dark hover:border-gold'}`}
+                onClick={() => setSetup((prev) => ({ ...prev, [si.name]: false }))}
+              >No Setup</button>
+              <button
+                className={`flex-1 py-2.5 rounded-[10px] border text-[13px] font-semibold transition-colors cursor-pointer ${setup[si.name] ? 'bg-dark border-dark text-off-white' : 'bg-white border-border-col text-text-dark hover:border-gold'}`}
+                onClick={() => setSetup((prev) => ({ ...prev, [si.name]: true }))}
+              >Yes, Setup (+${si.fee})</button>
+            </div>
+          </div>
+        ))}
+
         {/* Price summary */}
         {isBalanceMode ? (
           <div className="bg-cream rounded-[12px] px-4 py-4 flex justify-between items-center">
@@ -323,13 +351,19 @@ export default function PayPage(): React.ReactElement {
                 <span className="font-semibold text-text-dark">${rentalPrice}</span>
               </div>
             )}
+            {setupTotal > 0 && (
+              <div className="flex justify-between text-[14px]">
+                <span className="text-text-muted">Setup</span>
+                <span className="font-semibold text-text-dark">${setupTotal}</span>
+              </div>
+            )}
             {deliveryFee > 0 && (
               <div className="flex justify-between text-[14px]">
                 <span className="text-text-muted">Delivery ({deliveryInfo!.miles} mi × 4)</span>
                 <span className="font-semibold text-text-dark">${deliveryFee}</span>
               </div>
             )}
-            <div className={`flex justify-between text-[15px] ${rentalPrice > 0 || deliveryFee > 0 ? 'border-t border-border-col pt-2 mt-1' : ''}`}>
+            <div className={`flex justify-between text-[15px] ${rentalPrice > 0 || setupTotal > 0 || deliveryFee > 0 ? 'border-t border-border-col pt-2 mt-1' : ''}`}>
               <span className="font-bold text-text-dark">Grand Total</span>
               <span className="font-bold text-gold">${grandTotal.toFixed(2)}</span>
             </div>
