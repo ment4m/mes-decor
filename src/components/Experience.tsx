@@ -38,6 +38,7 @@ export const RENTAL_ITEMS: ExperienceItem[] = [
 // Optional setup fee offered at checkout, keyed by item key
 export const SETUP_FEES: Partial<Record<ItemKey, number>> = {
   'backdrop-ivory-drape':         50,
+  'wave-drape-set':               50,
   'backdrop-ivory-drape-premium': 75,
 }
 
