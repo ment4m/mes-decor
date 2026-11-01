@@ -63,6 +63,7 @@ async function startCheckout(
   clientName:  string,
   paymentType: 'full' | 'deposit',
   itemNames:   string[],
+  balance:     boolean,
 ): Promise<void> {
   const res  = await fetch('/.netlify/functions/create-checkout', {
     method:  'POST',
@@ -75,6 +76,7 @@ async function startCheckout(
       location,
       clientName,
       itemNames,
+      balance,
     }),
   })
   const data = await res.json()
@@ -125,9 +127,9 @@ export default function PayPage(): React.ReactElement {
   const grandTotal    = rentalPrice + setupTotal + deliveryFee
   const deliveryReady = deliveryType === 'pickup'
                         || (address.trim() !== '' && zipCode.trim() !== '' && deliveryInfo !== null)
-  const canPay        = isBalanceMode
+  const canPay        = clientName.trim() !== '' && (isBalanceMode
                         ? true
-                        : date.trim() !== '' && time.trim() !== '' && location.trim() !== '' && deliveryReady
+                        : date.trim() !== '' && time.trim() !== '' && location.trim() !== '' && deliveryReady)
 
   const handleCalcDelivery = async (): Promise<void> => {
     if (!address.trim() && !zipCode.trim()) return
@@ -158,7 +160,7 @@ export default function PayPage(): React.ReactElement {
         ? Math.round((amountParam as number) * 100)
         : Math.round(grandTotal * 100)
       const itemNames  = items.map((name) => setup[name] && setupItems.some((si) => si.name === name) ? `${name} (with setup)` : name)
-      await startCheckout(amountCents, label, date, time, location, clientName, paymentType, itemNames)
+      await startCheckout(amountCents, label, date, time, location, clientName, paymentType, itemNames, isBalanceMode)
     } catch {
       setError('Something went wrong. Please try again.')
       setLoading(false)
@@ -235,7 +237,7 @@ export default function PayPage(): React.ReactElement {
           </p>
 
           <div>
-            <label className="text-[12px] text-text-muted block mb-1">Your Name</label>
+            <label className="text-[12px] text-text-muted block mb-1">Your Name *</label>
             <input type="text" placeholder="Full name" value={clientName}
               onChange={(e) => setClientName(e.target.value)} className={inputClass} />
           </div>

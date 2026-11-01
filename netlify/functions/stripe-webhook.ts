@@ -109,17 +109,18 @@ export const handler: Handler = async (event) => {
     const session  = stripeEvent.data.object as Stripe.Checkout.Session
     const meta        = session.metadata ?? {}
     const amount      = session.amount_total ? `$${(session.amount_total / 100).toFixed(2)}` : 'N/A'
-    const items       = meta.items       || 'N/A'
+    const isBalance   = meta.balance === 'true'
+    const items       = (isBalance ? 'Balance – ' : '') + (meta.items || 'N/A')
     const date        = meta.date        || ''
     const time        = meta.time        || ''
     const location    = meta.location    || 'N/A'
     const name        = meta.clientName  || 'N/A'
     const isDeposit   = meta.paymentType === 'deposit'
-    const paymentLabel = isDeposit ? '50% Deposit' : 'Full Payment'
+    const paymentLabel = isBalance ? 'Balance Payment' : isDeposit ? '50% Deposit' : 'Full Payment'
 
     const title       = name !== 'N/A' ? `Mes Decor – ${name}` : `Mes Decor – ${items}`
     const description = `Client: ${name} | Payment: ${amount}`
-    const subject     = `💰 ${isDeposit ? 'Deposit' : 'Full Payment'} – ${name !== 'N/A' ? name : items}${date ? ` on ${date}` : ''}`
+    const subject     = `💰 ${isBalance ? 'Balance Payment' : isDeposit ? 'Deposit' : 'Full Payment'} – ${name !== 'N/A' ? name : items}${date ? ` on ${date}` : ''}`
 
     // Format date nicely for email display
     const tz          = 'America/Chicago'
