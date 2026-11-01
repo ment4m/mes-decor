@@ -8,6 +8,8 @@ const adminEmail    = process.env.ADMIN_EMAIL as string
 const airtableToken = process.env.VITE_AIRTABLE_TOKEN as string
 const airtableBase  = process.env.VITE_AIRTABLE_BASE_ID as string
 const airtableTable = process.env.VITE_AIRTABLE_TABLE_ID as string
+const sheetUrl      = process.env.GOOGLE_SHEET_URL
+const sheetSecret   = process.env.GOOGLE_SHEET_SECRET
 
 async function createAirtableBooking(
   name: string, items: string, date: string, time: string, location: string, amount: string, paymentLabel: string
@@ -31,6 +33,18 @@ async function createAirtableBooking(
     res = await fetch(url, { method: 'POST', headers, body: JSON.stringify({ fields }) })
   }
   if (!res.ok) console.error('Airtable booking failed:', res.status, await res.text())
+}
+
+// Add a row to the Google Sheet (via Apps Script web app). Skipped if not configured.
+async function appendToSheet(row: Record<string, string>): Promise<void> {
+  if (!sheetUrl) return
+  const res = await fetch(sheetUrl, {
+    method:  'POST',
+    headers: { 'Content-Type': 'text/plain' },
+    body:    JSON.stringify({ secret: sheetSecret, ...row }),
+  })
+  const text = await res.text()
+  if (!res.ok || text !== 'ok') console.error('Google Sheet append:', res.status, text.slice(0, 200))
 }
 
 // Convert "2025-06-14" + "18:30" → "20250614T183000"
@@ -208,7 +222,18 @@ export const handler: Handler = async (event) => {
     console.log('Resend response:', JSON.stringify(emailJson))
 
     // Save booking to Airtable
-    await createAirtableBooking(name, items, date, time, location, amount, paymentLabel)
+    try {
+      await createAirtableBooking(name, items, date, time, location, amount, paymentLabel)
+    } catch (err) {
+      console.error('Airtable booking error:', err)
+    }
+
+    // Save booking to Google Sheet
+    try {
+      await appendToSheet({ name, items, date, time, location, payment: paymentLabel, amount, sessionId: session.id })
+    } catch (err) {
+      console.error('Google Sheet error:', err)
+    }
   }
 
   return { statusCode: 200, body: 'OK' }
