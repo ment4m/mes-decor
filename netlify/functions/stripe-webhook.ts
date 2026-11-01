@@ -10,26 +10,27 @@ const airtableBase  = process.env.VITE_AIRTABLE_BASE_ID as string
 const airtableTable = process.env.VITE_AIRTABLE_TABLE_ID as string
 
 async function createAirtableBooking(
-  name: string, items: string, date: string, time: string, location: string, amount: string
+  name: string, items: string, date: string, time: string, location: string, amount: string, paymentLabel: string
 ): Promise<void> {
-  await fetch(`https://api.airtable.com/v0/${airtableBase}/${airtableTable}`, {
-    method:  'POST',
-    headers: {
-      'Authorization': `Bearer ${airtableToken}`,
-      'Content-Type':  'application/json',
-    },
-    body: JSON.stringify({
-      fields: {
-        Name:    name || 'Via Pay Link',
-        Phone:   '',
-        Service: items,
-        Date:    date,
-        Time:    time,
-        Status:  'Reserved',
-        Notes:   `Location: ${location} | Deposit paid: ${amount}`,
-      },
-    }),
-  })
+  const url     = `https://api.airtable.com/v0/${airtableBase}/${airtableTable}`
+  const headers = { 'Authorization': `Bearer ${airtableToken}`, 'Content-Type': 'application/json' }
+  const fields: Record<string, string> = {
+    Name:    name || 'Via Pay Link',
+    Phone:   '',
+    Service: items,
+    Status:  'Reserved',
+  }
+  if (date) fields.Date = date
+  if (time) fields.Time = time
+  const notes = `Location: ${location} | ${paymentLabel} paid: ${amount}`
+
+  // Try with a Notes column first; if the table has none, save without it
+  let res = await fetch(url, { method: 'POST', headers, body: JSON.stringify({ fields: { ...fields, Notes: notes } }) })
+  if (res.status === 422) {
+    console.warn('Airtable rejected booking with Notes, retrying without:', await res.text())
+    res = await fetch(url, { method: 'POST', headers, body: JSON.stringify({ fields }) })
+  }
+  if (!res.ok) console.error('Airtable booking failed:', res.status, await res.text())
 }
 
 // Convert "2025-06-14" + "18:30" → "20250614T183000"
@@ -207,7 +208,7 @@ export const handler: Handler = async (event) => {
     console.log('Resend response:', JSON.stringify(emailJson))
 
     // Save booking to Airtable
-    await createAirtableBooking(name, items, date, time, location, amount)
+    await createAirtableBooking(name, items, date, time, location, amount, paymentLabel)
   }
 
   return { statusCode: 200, body: 'OK' }
