@@ -84,7 +84,7 @@ const RATE_PER_MILE    = 0.75
 async function calcDelivery(address: string, zip: string): Promise<{ fee: number; miles: number } | { error: string }> {
   try {
     const coords  = await geocodeAddress(address, zip)
-    if (!coords) return { error: 'Address not found. Please check and try again.' }
+    if (!coords) return { error: 'Address not found in Texas. Please check the address and ZIP code.' }
 
     const [lng, lat] = coords
 

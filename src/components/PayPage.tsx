@@ -25,7 +25,7 @@ async function calcDelivery(address: string, zip: string, freeWithinMiles = 0): 
   try {
     const cleaned = cleanAddress(address)
     const coords  = await geocodeAddress(cleaned, zip.trim())
-    if (!coords) return { error: 'Address not found. Please check and try again.' }
+    if (!coords) return { error: 'Address not found in Texas. Please check the address and ZIP code.' }
 
     const [lng, lat] = coords
     const dirRes  = await fetch(
