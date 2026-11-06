@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import { fetchItemPrices } from '../lib/airtable'
+import { geocodeAddress } from '../lib/geocode'
 
 export type ItemKey = string
 export type PaymentType = 'full' | 'deposit'
@@ -80,15 +81,12 @@ const BUSINESS_LAT     = 33.0198
 const MAX_DELIVERY_MI  = 200
 const RATE_PER_MILE    = 0.75
 
-async function calcDelivery(address: string): Promise<{ fee: number; miles: number } | { error: string }> {
+async function calcDelivery(address: string, zip: string): Promise<{ fee: number; miles: number } | { error: string }> {
   try {
-    const geoRes  = await fetch(
-      `https://api.openrouteservice.org/geocode/search?api_key=${ORS_KEY}&text=${encodeURIComponent(address)}&boundary.country=US&focus.point.lat=${BUSINESS_LAT}&focus.point.lon=${BUSINESS_LNG}&size=1`
-    )
-    const geoData = await geoRes.json()
-    if (!geoData.features?.length) return { error: 'Address not found. Please check and try again.' }
+    const coords  = await geocodeAddress(address, zip)
+    if (!coords) return { error: 'Address not found. Please check and try again.' }
 
-    const [lng, lat] = geoData.features[0].geometry.coordinates as [number, number]
+    const [lng, lat] = coords
 
     const dirRes  = await fetch(
       `https://api.openrouteservice.org/v2/directions/driving-car?api_key=${ORS_KEY}&start=${BUSINESS_LNG},${BUSINESS_LAT}&end=${lng},${lat}`
@@ -215,7 +213,7 @@ export function PaymentPanel({ item, onClose, allItems = RENTAL_ITEMS }: { item:
     setCalculating(true)
     setDeliveryErr('')
     setDeliveryInfo(null)
-    const result = await calcDelivery(`${address.trim()}, ${zipCode.trim()}`)
+    const result = await calcDelivery(address.trim(), zipCode.trim())
     setCalculating(false)
     if ('error' in result) setDeliveryErr(result.error)
     else setDeliveryInfo(result)

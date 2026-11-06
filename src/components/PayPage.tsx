@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { RENTAL_ITEMS, SETUP_FEES, mergeAirtableItems } from './Experience'
 import { fetchItemPrices } from '../lib/airtable'
+import { geocodeAddress } from '../lib/geocode'
 
 const ORS_KEY         = import.meta.env.VITE_ORS_KEY as string
 const BUSINESS_LNG    = -96.6989
@@ -20,16 +21,13 @@ function cleanAddress(raw: string): string {
     .trim()
 }
 
-async function calcDelivery(address: string, freeWithinMiles = 0): Promise<{ fee: number; miles: number } | { error: string }> {
+async function calcDelivery(address: string, zip: string, freeWithinMiles = 0): Promise<{ fee: number; miles: number } | { error: string }> {
   try {
     const cleaned = cleanAddress(address)
-    const geoRes  = await fetch(
-      `https://api.openrouteservice.org/geocode/search?api_key=${ORS_KEY}&text=${encodeURIComponent(cleaned)}&boundary.country=US&focus.point.lat=${BUSINESS_LAT}&focus.point.lon=${BUSINESS_LNG}&size=1`
-    )
-    const geoData = await geoRes.json()
-    if (!geoData.features?.length) return { error: 'Address not found. Please check and try again.' }
+    const coords  = await geocodeAddress(cleaned, zip.trim())
+    if (!coords) return { error: 'Address not found. Please check and try again.' }
 
-    const [lng, lat] = geoData.features[0].geometry.coordinates as [number, number]
+    const [lng, lat] = coords
     const dirRes  = await fetch(
       `https://api.openrouteservice.org/v2/directions/driving-car?api_key=${ORS_KEY}&start=${BUSINESS_LNG},${BUSINESS_LAT}&end=${lng},${lat}`
     )
@@ -136,7 +134,7 @@ export default function PayPage(): React.ReactElement {
     setCalculating(true)
     setDeliveryErr('')
     setDeliveryInfo(null)
-    const result = await calcDelivery(`${address.trim()}, ${zipCode.trim()}`, freeDeliveryMiles)
+    const result = await calcDelivery(address.trim(), zipCode.trim(), freeDeliveryMiles)
     if ('error' in result) setDeliveryErr(result.error)
     else setDeliveryInfo(result)
     setCalculating(false)
